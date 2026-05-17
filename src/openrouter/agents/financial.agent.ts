@@ -6,9 +6,33 @@ import {
 } from '../interfaces/openrouter.interface';
 import { PromptConfig } from '../interfaces/financialagent.interface';
 
+/**
+ * Financial agent service for OpenRouter AI.
+ *
+ * Under tsx/bun: esbuild emits `Reflect.metadata("self:paramtypes", ...)` instead of
+ * `"design:paramtypes"`. NestJS 9 reads only `"design:paramtypes"` for class-type token
+ * resolution, so all plain-typed constructor params are silently resolved as `undefined`.
+ *
+ * FIX: We use a static factory (`createFromModule`) called from the module's `useFactory`,
+ * and a public field for `openRouterService` instead of a private constructor param.
+ */
 @Injectable()
 export class FinancialAgentService {
-  constructor(private readonly openRouterService: OpenRouterService) {}
+  // Public so factory can assign; never undefined after construction
+  openRouterService!: OpenRouterService;
+
+  private constructor() {}
+
+  /**
+   * Static factory so NestJS can bypass broken @ClassProvider metadata entirely.
+   */
+  static create(
+    openRouterService: OpenRouterService,
+  ): FinancialAgentService {
+    const svc = new FinancialAgentService();
+    svc.openRouterService = openRouterService;
+    return svc;
+  }
 
   /**
    * Simple chat completion

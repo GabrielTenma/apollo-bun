@@ -6,10 +6,24 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
  * Guard that enforces role-based access control (RBAC).
  * It reads the required roles set by the `@Roles()` decorator and checks
  * if the authenticated user possesses at least one of them.
+ *
+ * NOTE: Uses factory pattern to avoid broken tsx/esbuild `design:paramtypes` metadata
+ * that silently resolves constructor params as `undefined` under bun/tsx.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  private reflector: Reflector;
+
+  private constructor(reflector: Reflector) {
+    this.reflector = reflector;
+  }
+
+  /**
+   * Factory called from the module's useFactory — Reflector is injected by Nest.
+   */
+  static create(reflector: Reflector): RolesGuard {
+    return new RolesGuard(reflector);
+  }
 
   /**
    * Determines if the current user is authorized to access the route.

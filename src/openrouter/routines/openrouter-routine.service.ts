@@ -3,7 +3,7 @@ import { RoutineService } from '../../common/routines/services/routine.service';
 import { APP_CONSTANTS, appConstants, AppConstants } from '../../constants/app.constants';
 import { FinancialAgentService } from '../agents/financial.agent';
 import { ScrapedDataEntity } from '../../supabase/entities/scraped-data.entity';
-import * as crypto from 'crypto';
+import * as nodeCrypto from 'crypto';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -92,7 +92,7 @@ export class OpenrouterRoutineService implements OnModuleInit {
             source_id: 'ac851202-bc72-43c8-b784-e213b5907159',
             parsed_data: { chatCompletion: chatCompletion },
             raw_content: Buffer.from(chatCompletion || '').toString('utf-8'),
-            data_hash: crypto
+            data_hash: nodeCrypto
               .createHash('sha256')
               .update(chatCompletion || '')
               .digest('hex')
