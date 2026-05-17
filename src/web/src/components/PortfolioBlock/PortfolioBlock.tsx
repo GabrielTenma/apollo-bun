@@ -1,6 +1,7 @@
 import { useState, useEffect, ReactNode } from "react";
 import Markdown from "react-markdown";
 import Gfm from "remark-gfm";
+import StickyNavBar from "../NavigationBar/StickyNavBar";
 
 interface ContentItem {
   name: string;
@@ -31,15 +32,15 @@ function MarkdownElTable({ children }: { children?: ReactNode }) {
 }
 
 function MarkdownElTh({ children }: { children?: ReactNode }) {
-  return <th className="!text-wrap">{children}</th>;
+  return <th className="text-wrap!">{children}</th>;
 }
 
 function MarkdownElTd({ children }: { children?: ReactNode }) {
-  return <td className="!text-wrap">{children}</td>;
+  return <td className="text-wrap!">{children}</td>;
 }
 
 function MarkdownElThead({ children }: { children?: ReactNode }) {
-  return <thead>{children}</thead>;
+  return <thead className="z-auto">{children}</thead>;
 }
 
 function MarkdownElTbody({ children }: { children?: ReactNode }) {
@@ -105,52 +106,47 @@ export default function PortfolioBlock() {
   }, []);
 
   return (
-    <div className="bg-base-100 py-8 sm:py-16 lg:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="space-y-10">
-          {/* Header Section */}
-          <div className="mb-12 space-y-4 sm:mb-16 lg:mb-24">
-            <div>
-              <span className="badge badge-soft badge-primary rounded-full font-semibold">
-                Apollo Watcher
-              </span>
-            </div>
-          </div>
+    <>
+      <StickyNavBar/>
+      <div className="bg-base-100 py-8 sm:py-16 lg:py-10 z-auto">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="space-y-5">
 
-          {/* Project Details Section */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-1">
+            {/* Project Details Section */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-1">
 
-            {/* Project Information */}
-            <div className="space-y-6 px-6">
-              <h3 className="text-base-content text-3xl font-semibold">
-                Latest Completion
-              </h3>
-              <Markdown
-                remarkPlugins={[Gfm]}
-                components={markdownComponents}
-              >
-                {loading
-                  ? "Loading..."
-                  : latest || "No latest completion available"}
-              </Markdown>
+              {/* Project Information */}
+              <div className="space-y-6 px-6">
+                <h3 className="text-base-content text-3xl font-semibold">
+                  Latest Completion
+                </h3>
+                <Markdown
+                  remarkPlugins={[Gfm]}
+                  components={markdownComponents}
+                >
+                  {loading
+                    ? "Loading..."
+                    : latest || "No latest completion available"}
+                </Markdown>
 
-              <hr className="border-base-content/20" />
+                <hr className="border-base-content/20" />
 
-              {/* Project Details */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <span className="text-base-content w-22 font-semibold">
-                    Correlation:
-                  </span>
-                  <span className="text-base-content/80">
-                    {latest && previous ? "Has previous" : "No previous data"}
-                  </span>
+                {/* Project Details */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <span className="text-base-content w-22 font-semibold">
+                      Correlation:
+                    </span>
+                    <span className="text-base-content/80">
+                      {latest && previous ? "Has previous" : "No previous data"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

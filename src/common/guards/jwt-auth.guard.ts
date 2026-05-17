@@ -8,11 +8,24 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
  * JWT authentication guard that extends Passport's AuthGuard.
  * It checks for the `isPublic` metadata; if a route is marked as public,
  * authentication is bypassed.
+ *
+ * NOTE: Uses factory pattern to avoid broken tsx/esbuild `design:paramtypes` metadata
+ * that silently resolves constructor params as `undefined` under bun/tsx.
  */
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
-  constructor(private readonly reflector: Reflector) {
+  private reflector: Reflector;
+
+  private constructor(reflector: Reflector) {
     super();
+    this.reflector = reflector;
+  }
+
+  /**
+   * Factory called from the module's useFactory — Reflector is injected by Nest.
+   */
+  static create(reflector: Reflector): JwtAuthGuard {
+    return new JwtAuthGuard(reflector);
   }
 
   /**

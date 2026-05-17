@@ -10,6 +10,16 @@ import { CommonModule } from '../common/common.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 /**
+ * Factory for FinancialAgentService.
+ * Uses explicit useFactory to avoid broken tsx/esbuild `design:paramtypes` metadata.
+ */
+function buildFinancialAgentService(
+  openRouterService: OpenRouterService,
+): FinancialAgentService {
+  return FinancialAgentService.create(openRouterService);
+}
+
+/**
  * Factory for OpenrouterRoutineService.
  * Uses explicit useFactory to avoid broken tsx/esbuild `design:paramtypes` metadata.
  */
@@ -40,7 +50,11 @@ function buildOpenrouterRoutineService(
   imports: [CommonModule, TypeOrmModule.forFeature([ScrapedDataEntity])],
   providers: [
     OpenRouterService,
-    FinancialAgentService,
+    {
+      provide: FinancialAgentService,
+      useFactory: buildFinancialAgentService,
+      inject: [OpenRouterService],
+    },
     {
       provide: OpenrouterRoutineService,
       useFactory: buildOpenrouterRoutineService,

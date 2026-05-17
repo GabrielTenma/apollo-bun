@@ -4,11 +4,11 @@
   <p align="center">
     Simple scraper - economics news watcher
     <br />
-    <a href="https://github.com/GabrielTenma/apollo/releases">Release</a>
+    <a href="https://github.com/GabrielTenma/apollo-bun/releases">Release</a>
     ·
-    <a href="https://github.com/GabrielTenma/apollo/issues">Report Bug</a>
+    <a href="https://github.com/GabrielTenma/apollo-bun/issues">Report Bug</a>
     ·
-    <a href="https://github.com/GabrielTenma/apollo/issues">Request Feature</a>
+    <a href="https://github.com/GabrielTenma/apollo-bun/issues">Request Feature</a>
   </p>
 </div>
 
@@ -37,11 +37,11 @@ To see a `sequence diagram` complete, click <a href="https://sequencediagram.org
 
 ```bash
 # Clone the repository
-git clone https://github.com/GabrielTenma/apollo.git
-cd apollo
+git clone https://github.com/GabrielTenma/apollo-bun.git
+cd apollo-bun
 
 # Install dependencies
-npm install
+bun install
 
 # Configure environment variables
 cp .env.example .env
@@ -52,13 +52,13 @@ cp .env.example .env
 
 ```bash
 # Development (NestJS + Vite with hot reload)
-npm run dev
+bun run dev
 
 # Production build
-npm run build:all
+bun run build:all
 
 # Start production server
-npm run start:all
+bun run start:all
 ```
 
 The app serves on `http://localhost:3000`. The Vite dev server runs on `http://localhost:3001`.

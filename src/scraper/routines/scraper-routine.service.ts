@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as nodeCrypto from 'crypto';
 import { RoutineService } from '../../common/routines/services/routine.service';
 import { CoinmarketCapTarget } from '../target/coinmarketcap.target';
 import { YahooFinanceTarget } from '../target/yahoofinance.target';
@@ -108,52 +109,52 @@ export class ScraperRoutineService implements OnModuleInit {
           ),
         );
 
-        const coinmarketcapDataEntity: ScrapedDataEntity = {
-          source_id: '9d5d44d9-97b1-49d5-93df-fe4e461f6488',
-          parsed_data: scrapedContentStore.get('coinmarketcap'),
-          raw_content: Buffer.from(scrapeAllResult[0].content || '').toString(
-            'utf-8',
-          ),
-          data_hash: crypto
-            .createHash('sha256')
-            .update(scrapeAllResult[0].content || '')
-            .digest('hex')
-            .substring(0, 64),
-          status: 'new',
-        };
-        const yahoofinanceDataEntity: ScrapedDataEntity = {
-          source_id: 'a1a84270-de34-4dd9-ae0b-90dc00b39dbc',
-          parsed_data: scrapedContentStore.get('yahoofinance'),
-          raw_content: Buffer.from(scrapeAllResult[1].content || '').toString(
-            'utf-8',
-          ),
-          data_hash: crypto
-            .createHash('sha256')
-            .update(scrapeAllResult[1].content || '')
-            .digest('hex')
-            .substring(0, 64),
-          status: 'new',
-        };
-        const financialjuiceDataEntity: ScrapedDataEntity = {
-          source_id: '3ede22a5-e89b-4667-9b06-7cf404996720',
-          parsed_data: scrapedContentStore.get('financialjuice'),
-          raw_content: Buffer.from(scrapeAllResult[2].content || '').toString(
-            'utf-8',
-          ),
-          data_hash: crypto
-            .createHash('sha256')
-            .update(scrapeAllResult[2].content || '')
-            .digest('hex')
-            .substring(0, 64),
-          status: 'new',
-        };
+        // const coinmarketcapDataEntity: ScrapedDataEntity = {
+        //   source_id: '9d5d44d9-97b1-49d5-93df-fe4e461f6488',
+        //   parsed_data: scrapedContentStore.get('coinmarketcap'),
+        //   raw_content: Buffer.from(scrapeAllResult[0].content || '').toString(
+        //     'utf-8',
+        //   ),
+        //   data_hash: nodeCrypto
+        //     .createHash('sha256')
+        //     .update(scrapeAllResult[0].content || '')
+        //     .digest('hex')
+        //     .substring(0, 64),
+        //   status: 'new',
+        // };
+        // const yahoofinanceDataEntity: ScrapedDataEntity = {
+        //   source_id: 'a1a84270-de34-4dd9-ae0b-90dc00b39dbc',
+        //   parsed_data: scrapedContentStore.get('yahoofinance'),
+        //   raw_content: Buffer.from(scrapeAllResult[1].content || '').toString(
+        //     'utf-8',
+        //   ),
+        //   data_hash: nodeCrypto
+        //     .createHash('sha256')
+        //     .update(scrapeAllResult[1].content || '')
+        //     .digest('hex')
+        //     .substring(0, 64),
+        //   status: 'new',
+        // };
+        // const financialjuiceDataEntity: ScrapedDataEntity = {
+        //   source_id: '3ede22a5-e89b-4667-9b06-7cf404996720',
+        //   parsed_data: scrapedContentStore.get('financialjuice'),
+        //   raw_content: Buffer.from(scrapeAllResult[2].content || '').toString(
+        //     'utf-8',
+        //   ),
+        //   data_hash: nodeCrypto
+        //     .createHash('sha256')
+        //     .update(scrapeAllResult[2].content || '')
+        //     .digest('hex')
+        //     .substring(0, 64),
+        //   status: 'new',
+        // };
 
-        const scrapedData = this.scrapedDataRepository.create([
-          coinmarketcapDataEntity,
-          yahoofinanceDataEntity,
-          financialjuiceDataEntity,
-        ]);
-        await this.scrapedDataRepository.save(scrapedData);
+        // const scrapedData = this.scrapedDataRepository.create([
+        //   coinmarketcapDataEntity,
+        //   yahoofinanceDataEntity,
+        //   financialjuiceDataEntity,
+        // ]);
+        // await this.scrapedDataRepository.save(scrapedData);
 
         this.logger.log(`scrape routine done ${scrapeAllResult.length}`);
       },
