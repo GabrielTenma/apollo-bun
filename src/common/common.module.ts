@@ -1,5 +1,5 @@
 import { Module, Global } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER, Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { TransformInterceptor } from './interceptors/transform.interceptor';
@@ -25,6 +25,22 @@ function createRoutineService(configService: CommonConfigService): any {
 }
 
 /**
+ * Factory for JwtAuthGuard — uses Reflector directly to avoid broken tsx/esbuild
+ * `design:paramtypes` metadata under bun/tsx.
+ */
+function createJwtAuthGuard(reflector: Reflector): JwtAuthGuard {
+  return JwtAuthGuard.create(reflector);
+}
+
+/**
+ * Factory for RolesGuard — uses Reflector directly to avoid broken tsx/esbuild
+ * `design:paramtypes` metadata under bun/tsx.
+ */
+function createRolesGuard(reflector: Reflector): RolesGuard {
+  return RolesGuard.create(reflector);
+}
+
+/**
  * Global module that aggregates and exports shared cross-cutting concerns
  * such as authentication guards, role-based authorization, response transformers,
  * logging, and exception filters.
@@ -47,11 +63,13 @@ function createRoutineService(configService: CommonConfigService): any {
     RolesGuard,
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useFactory: createJwtAuthGuard,
+      inject: [Reflector],
     },
     {
       provide: APP_GUARD,
-      useClass: RolesGuard,
+      useFactory: createRolesGuard,
+      inject: [Reflector],
     },
     // Interceptors: Applied globally to all routes
     TransformInterceptor,
