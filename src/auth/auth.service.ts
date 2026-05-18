@@ -14,25 +14,39 @@ export interface UserRoles {
   roles: string[];
 }
 
+/**
+ * AuthService — factory pattern so NestJS bypasses broken `design:paramtypes`
+ * resolution under tsx / esbuild (emitDecoratorMetadata is intentionally false).
+ *
+ * All constructor params are declared as non-nullable public fields so the
+ * factory can assign them directly; the private constructor is never called
+ * by NestJS's ClassProvider path.
+ */
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly jwtService: JwtService,
-    @InjectRepository(UserEntity)
-    private readonly userRepository: Repository<UserEntity>,
-    @InjectRepository(UserSessionEntity)
-    private readonly sessionRepository: Repository<UserSessionEntity>,
-  ) {}
+  // Assigned by the static factory; never `undefined` after construction
+  jwtService!: JwtService;
+  userRepository!: Repository<UserEntity>;
+  sessionRepository!: Repository<UserSessionEntity>;
+
+  private constructor() {}
 
   /**
-   * Creates a new user with the provided credentials.
-   * Requires a valid creation key from config.
-   *
-   * @param email - User email
-   * @param password - User password
-   * @param role - User role
-   * @param creationKey - Secret key for creation authorization
+   * Static factory. Nest resolves and injects every dependency explicitly
+   * from the module's `useFactory`, so `design:paramtypes` metadata is never read.
    */
+  static create(
+    jwtService: JwtService,
+    userRepository: Repository<UserEntity>,
+    sessionRepository: Repository<UserSessionEntity>,
+  ): AuthService {
+    const svc = new AuthService();
+    svc.jwtService = jwtService;
+    svc.userRepository = userRepository;
+    svc.sessionRepository = sessionRepository;
+    return svc;
+  }
+
   async createUser(
     email: string,
     password: string,
@@ -44,7 +58,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid creation key');
     }
 
-    // Check if user already exists
     const existingUser = await this.userRepository.findOne({
       where: { email },
     });
@@ -52,10 +65,8 @@ export class AuthService {
       throw new UnauthorizedException('User already exists');
     }
 
-    // Hash the password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user with role
     const user = this.userRepository.create({
       email,
       password_hash: passwordHash,
@@ -66,15 +77,6 @@ export class AuthService {
     await this.userRepository.save(user);
   }
 
-  /**
-   * Authenticates a user with email and password, creates a session.
-   *
-   * @param email - User email
-   * @param password - User password
-   * @param userAgent - Optional user agent
-   * @param ipAddress - Optional IP address
-   * @returns Access and refresh tokens
-   */
   async login(
     email: string,
     password: string,
@@ -103,11 +105,11 @@ export class AuthService {
     const accessToken = this.generateAccessToken(userRoles);
     const refreshToken = this.generateRefreshToken(userRoles);
 
-    // Hash the refresh token
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
 
-    // Create session
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000,
+    );
     const session = this.sessionRepository.create({
       user_id: user.id,
       refresh_token_hash: refreshTokenHash,
@@ -121,21 +123,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  /**
-   * Generates a JWT access token with user roles.
-   *
-   * @param user - The user object containing id, email, and roles
-   * @param expiresIn - Token expiration time (e.g., '60m', '1h', '7d')
-   *                     If not provided, uses JWT_ACCESS_EXPIRATION from env
-   * @returns The signed JWT token
-   *
-   * @example
-   * // Time-based expiration (60 minutes)
-   * const token = generateAccessToken(user, '60m');
-   *
-   * // Non-time-based (no expiration)
-   * const token = generateAccessToken(user, null); // or undefined
-   */
   generateAccessToken(user: UserRoles, expiresIn?: string | null): string {
     const payload: JwtPayload = {
       sub: user.id,
@@ -145,56 +132,34 @@ export class AuthService {
 
     const options: { expiresIn?: string | number } = {};
 
-    // If expiresIn is explicitly null or undefined, token won't have expiration
     if (expiresIn !== null && expiresIn !== undefined) {
       options.expiresIn = expiresIn;
     } else if (expiresIn === undefined) {
-      // Use default from env if not specified
       const defaultExpiration = env.string('JWT_ACCESS_EXPIRATION', '60m');
       options.expiresIn = defaultExpiration;
     }
-    // If expiresIn is null, token has no expiration (non-time-based)
 
     return this.jwtService.sign(payload, options);
   }
 
-  /**
-   * Generates a refresh token for token renewal.
-   * Refresh tokens typically have longer expiration times.
-   *
-   * @param user - The user object
-   * @param expiresIn - Refresh token expiration (default: 7d from env)
-   * @returns The refresh token
-   */
   generateRefreshToken(user: UserRoles, expiresIn?: string): string {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: [], // Refresh tokens don't need roles
+      roles: [],
     };
 
     const refreshExpiration =
-      expiresIn ||
-      env.string('JWT_REFRESH_EXPIRATION', '7d');
+      expiresIn || env.string('JWT_REFRESH_EXPIRATION', '7d');
 
     return this.jwtService.sign(payload, { expiresIn: refreshExpiration });
   }
 
-  /**
-   * Validates a refresh token from database and returns new tokens.
-   *
-   * @param refreshToken - The refresh token to validate
-   * @param userAgent - Optional user agent
-   * @param ipAddress - Optional IP address
-   * @returns New access token and refresh token pair
-   * @throws UnauthorizedException if refresh token is invalid
-   */
   async refreshTokens(
     refreshToken: string,
     userAgent?: string,
     ipAddress?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    // Hash the incoming refresh token to match stored hash
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
 
     const session = await this.sessionRepository.findOne({
@@ -213,11 +178,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    // Revoke the old session
     session.revoked_at = new Date();
     await this.sessionRepository.save(session);
 
-    // Create new session with new refresh token
     const user = session.user;
     const userRoles: UserRoles = {
       id: user.id,
@@ -229,7 +192,9 @@ export class AuthService {
     const newRefreshToken = this.generateRefreshToken(userRoles);
     const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
 
-    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const newExpiresAt = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000,
+    );
     const newSession = this.sessionRepository.create({
       user_id: user.id,
       refresh_token_hash: newRefreshTokenHash,

@@ -9,33 +9,43 @@ import { env } from '../common/utils/environment.util';
 
 /**
  * OpenRouter service for interacting with OpenRouter API.
- * Provides methods for chat completions, model listing,
- * and other AI model interactions through OpenRouter.
+ * Factory pattern: constructor body runs under a static factory so that
+ * `design:paramtypes` metadata is never read under tsx/esbuild.
  */
 @Injectable()
 export class OpenRouterService {
-  private readonly logger = new Logger(OpenRouterService.name);
-  private readonly apiKey: string;
-  private readonly baseUrl: string;
-  private readonly defaultModel: string;
-  private readonly timeout: number;
+  // Assigned by the static factory; never `undefined` after construction
+  logger!: Logger;
+  apiKey!: string;
+  baseUrl!: string;
+  defaultModel!: string;
+  timeout!: number;
 
-  constructor() {
-    this.apiKey = env.string('OPENROUTER_API_KEY', '');
-    this.baseUrl = env.string('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1');
-    this.defaultModel = env.string('OPENROUTER_DEFAULT_MODEL', 'google/gemini-2.0-flash-exp:free');
-    this.timeout = env.number('OPENROUTER_TIMEOUT', 30000) ?? 30000;
-
-    if (!this.apiKey) {
-      this.logger.warn('OpenRouter API key not configured');
-    }
-  }
+  private constructor() {}
 
   /**
-   * Creates a chat completion using OpenRouter API
-   * @param options - Chat completion options
-   * @returns Chat completion response
+   * Static factory — NestJS resolves all deps manually.
    */
+  static create(): OpenRouterService {
+    const svc = new OpenRouterService();
+    svc.logger = new Logger(OpenRouterService.name);
+    svc.apiKey = env.string('OPENROUTER_API_KEY', '');
+    svc.baseUrl = env.string(
+      'OPENROUTER_BASE_URL',
+      'https://openrouter.ai/api/v1',
+    );
+    svc.defaultModel = env.string(
+      'OPENROUTER_DEFAULT_MODEL',
+      'google/gemini-2.0-flash-exp:free',
+    );
+    svc.timeout = env.number('OPENROUTER_TIMEOUT', 30000) ?? 30000;
+
+    if (!svc.apiKey) {
+      svc.logger.warn('OpenRouter API key not configured');
+    }
+    return svc;
+  }
+
   async createChatCompletion(
     options: ChatCompletionOptions,
   ): Promise<ChatCompletionResponse> {
@@ -87,10 +97,6 @@ export class OpenRouterService {
     }
   }
 
-  /**
-   * Lists available models from OpenRouter
-   * @returns Array of available models
-   */
   async listModels(): Promise<OpenRouterModel[]> {
     try {
       this.logger.log('Fetching available models from OpenRouter');
@@ -119,13 +125,6 @@ export class OpenRouterService {
     }
   }
 
-  /**
-   * Simple chat completion with just a prompt
-   * @param prompt - User prompt
-   * @param model - Model to use (optional, uses default if not specified)
-   * @param systemPrompt - System prompt (optional)
-   * @returns Generated text response
-   */
   async chat(
     prompt: string,
     model?: string,

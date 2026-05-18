@@ -16,19 +16,30 @@ import { env } from '../common/utils/environment.util';
  */
 @Injectable()
 export class TelegramService {
-  private readonly logger = new Logger(TelegramService.name);
-  private readonly botToken: string;
-  private readonly baseUrl: string;
-  private readonly timeout: number;
+  // Assigned by the static factory; never `undefined` after construction
+  logger: Logger;
+  botToken: string;
+  baseUrl: string;
+  timeout: number;
 
-  constructor() {
-    this.botToken = env.string('TELEGRAM_BOT_TOKEN', '');
-    this.baseUrl = `https://api.telegram.org/bot${this.botToken}`;
-    this.timeout = env.number('TELEGRAM_TIMEOUT', 30000) ?? 30000;
+  private constructor() {}
 
-    if (!this.botToken) {
-      this.logger.warn('Telegram bot token not configured');
+  /**
+   * Static factory — NestJS resolves all deps manually so `design:paramtypes`
+   * metadata is never read (broken under esbuild/tsx).
+   */
+  static create(): TelegramService {
+    const svc = new TelegramService();
+    svc.logger = new Logger(TelegramService.name);
+    svc.botToken = env.string('TELEGRAM_BOT_TOKEN', '');
+    svc.baseUrl = `https://api.telegram.org/bot${svc.botToken}`;
+    svc.timeout = env.number('TELEGRAM_TIMEOUT', 30000) ?? 30000;
+
+    if (!svc.botToken) {
+      svc.logger.warn('Telegram bot token not configured');
     }
+
+    return svc;
   }
 
   /**

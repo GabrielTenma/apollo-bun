@@ -43,19 +43,41 @@ import * as crypto from 'crypto';
  */
 @Controller('/api/v1/scraper')
 export class ScraperController {
+  // Assigned by the static factory; never `undefined` after construction
+  scraperService!: ScraperService;
+  financialJuiceTarget!: FinancialJuiceTarget;
+  coinmarketCapTarget!: CoinmarketCapTarget;
+  yahooFinanceTarget!: YahooFinanceTarget;
+  constants!: AppConstants;
+  scrapingSourceRepository!: Repository<ScrapingSourceEntity>;
+  scrapedDataRepository!: Repository<ScrapedDataEntity>;
   private readonly logger = new Logger(ScraperController.name);
 
-  constructor(
-    private readonly scraperService: ScraperService,
-    private readonly financialJuiceTarget: FinancialJuiceTarget,
-    private readonly coinmarketCapTarget: CoinmarketCapTarget,
-    private readonly yahooFinanceTarget: YahooFinanceTarget,
-    @Inject(APP_CONSTANTS) private readonly constants: AppConstants,
-    @InjectRepository(ScrapingSourceEntity)
-    private readonly scrapingSourceRepository: Repository<ScrapingSourceEntity>,
-    @InjectRepository(ScrapedDataEntity)
-    private readonly scrapedDataRepository: Repository<ScrapedDataEntity>,
-  ) {}
+  private constructor() {}
+
+  /**
+   * Static factory. Nest resolves and injects every dependency explicitly
+   * from the module's `useFactory`, so `design:paramtypes` metadata is never read.
+   */
+  static create(
+    scraperService: ScraperService,
+    financialJuiceTarget: FinancialJuiceTarget,
+    coinmarketCapTarget: CoinmarketCapTarget,
+    yahooFinanceTarget: YahooFinanceTarget,
+    constants: AppConstants,
+    scrapingSourceRepository: Repository<ScrapingSourceEntity>,
+    scrapedDataRepository: Repository<ScrapedDataEntity>,
+  ): ScraperController {
+    const ctrl = new ScraperController();
+    ctrl.scraperService = scraperService;
+    ctrl.financialJuiceTarget = financialJuiceTarget;
+    ctrl.coinmarketCapTarget = coinmarketCapTarget;
+    ctrl.yahooFinanceTarget = yahooFinanceTarget;
+    ctrl.constants = constants;
+    ctrl.scrapingSourceRepository = scrapingSourceRepository;
+    ctrl.scrapedDataRepository = scrapedDataRepository;
+    return ctrl;
+  }
 
   /**
    * Scrapes a single webpage

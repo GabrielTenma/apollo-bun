@@ -19,32 +19,35 @@ import { FinancialAgentService } from './agents/financial.agent';
  * Controller for OpenRouter AI operations.
  * Provides endpoints for chat completions, model listing,
  * and other AI model interactions through OpenRouter API.
+ *
+ * Factory pattern: all constructor params are injected explicitly by the module
+ * via `useFactory`, bypassing the broken `design:paramtypes` code path.
  */
 @Controller('/api/v1/openrouter')
 export class OpenRouterController {
+  // Assigned by the static factory; never `undefined` after construction
+  openRouterService!: OpenRouterService;
+  financialAgentService!: FinancialAgentService;
+  constants!: AppConstants;
   private readonly logger = new Logger(OpenRouterController.name);
 
-  constructor(
-    private readonly openRouterService: OpenRouterService,
-    private readonly financialAgentService: FinancialAgentService,
-    @Inject(APP_CONSTANTS) private readonly constants: AppConstants,
-  ) {}
+  private constructor() {}
 
   /**
-   * Creates a chat completion
-   * @param options - Chat completion options
-   * @returns Chat completion result
-   *
-   * @example
-   * POST /openrouter/chat
-   * {
-   *   "model": "google/gemini-2.0-flash-exp:free",
-   *   "messages": [
-   *     { "role": "user", "content": "Hello, how are you?" }
-   *   ],
-   *   "temperature": 0.7
-   * }
+   * Static factory — NestJS resolves all deps manually.
    */
+  static create(
+    openRouterService: OpenRouterService,
+    financialAgentService: FinancialAgentService,
+    constants: AppConstants,
+  ): OpenRouterController {
+    const ctrl = new OpenRouterController();
+    ctrl.openRouterService = openRouterService;
+    ctrl.financialAgentService = financialAgentService;
+    ctrl.constants = constants;
+    return ctrl;
+  }
+
   @Post('chat')
   @Roles('admin', 'moderator')
   async createChatCompletion(
@@ -59,13 +62,6 @@ export class OpenRouterController {
     }
   }
 
-  /**
-   * Lists available models from OpenRouter
-   * @returns Array of available models
-   *
-   * @example
-   * GET /openrouter/models
-   */
   @Get('models')
   @Roles('admin', 'moderator')
   async listModels(): Promise<any> {
@@ -78,21 +74,6 @@ export class OpenRouterController {
     }
   }
 
-  /**
-   * Simple chat endpoint with just a prompt
-   * @param prompt - User prompt
-   * @param model - Model to use (optional)
-   * @param systemPrompt - System prompt (optional)
-   * @returns Generated text response
-   *
-   * @example
-   * POST /openrouter/simple-chat
-   * {
-   *   "prompt": "What is the capital of France?",
-   *   "model": "google/gemini-2.0-flash-exp:free",
-   *   "systemPrompt": "You are a helpful assistant"
-   * }
-   */
   @Post('simple-chat')
   @Roles('admin', 'moderator')
   async simpleChat(
@@ -114,10 +95,6 @@ export class OpenRouterController {
     }
   }
 
-  /**
-   * Health check endpoint for the OpenRouter service
-   * @returns Health status
-   */
   @Public()
   @Get('health')
   async healthCheck(): Promise<any> {
@@ -136,7 +113,7 @@ export class OpenRouterController {
     const content: Content[] = [];
 
     // latest
-    const contentLatest = appConstants.scrapedContentStore.get('completion');
+    const contentLatest = this.constants.scrapedContentStore.get('completion');
     if (contentLatest != undefined) {
       content.push({
         name: 'latest',
@@ -145,7 +122,7 @@ export class OpenRouterController {
     }
 
     // old
-    const contentPrevious = appConstants.scrapedContentStore.get(
+    const contentPrevious = this.constants.scrapedContentStore.get(
       'completion-previous',
     );
     if (contentPrevious != undefined && contentPrevious != contentLatest) {

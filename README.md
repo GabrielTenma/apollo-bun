@@ -28,7 +28,7 @@ To see a `sequence diagram` complete, click <a href="https://sequencediagram.org
 
 ### Prerequisites
 
-- Node.js >= 18
+- Bun (latest)
 - PostgreSQL database / Supabase
 - [OpenRouter](https://openrouter.ai/) API key
 - Telegram bot token (from [@BotFather](https://t.me/BotFather))

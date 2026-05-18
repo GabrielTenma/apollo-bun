@@ -10,6 +10,14 @@ import { CommonModule } from '../common/common.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 /**
+ * Factory for OpenRouterService — constructor body runs under factory control
+ * so `design:paramtypes` is never read.
+ */
+function buildOpenRouterService(): OpenRouterService {
+  return OpenRouterService.create();
+}
+
+/**
  * Factory for FinancialAgentService.
  * Uses explicit useFactory to avoid broken tsx/esbuild `design:paramtypes` metadata.
  */
@@ -38,18 +46,34 @@ function buildOpenrouterRoutineService(
 }
 
 /**
+ * Factory for OpenRouterController — factory-provided so its constructor
+ * dependencies are resolved explicitly.
+ */
+function buildOpenRouterController(
+  openRouterService: OpenRouterService,
+  financialAgentService: FinancialAgentService,
+  constants: any,
+): OpenRouterController {
+  return OpenRouterController.create(
+    openRouterService,
+    financialAgentService,
+    constants,
+  );
+}
+
+/**
  * Module for OpenRouter AI functionality.
- * Provides the OpenRouterService for interacting with OpenRouter API,
- * including chat completions, model listing, and other AI operations.
- *
- * Can be imported globally to make the OpenRouterService available
- * throughout the application.
+ * Provides the OpenRouterService for interacting with OpenRouter API.
  */
 @Global()
 @Module({
   imports: [CommonModule, TypeOrmModule.forFeature([ScrapedDataEntity])],
   providers: [
-    OpenRouterService,
+    {
+      provide: OpenRouterService,
+      useFactory: buildOpenRouterService,
+      inject: [],
+    },
     {
       provide: FinancialAgentService,
       useFactory: buildFinancialAgentService,
@@ -60,9 +84,18 @@ function buildOpenrouterRoutineService(
       useFactory: buildOpenrouterRoutineService,
       inject: [
         RoutineService,              // CommonModule factory provider (class token)
-        FinancialAgentService,       // OpenRouterModule's own @Injectable()
+        FinancialAgentService,       // OpenRouterModule's own factory provider
         getRepositoryToken(ScrapedDataEntity), // TypeORM dynamic repo token
-        'APP_CONSTANTS',             // AppConstantsModule value token
+        'APP_CONSTANTS',             // AppConstantsModule useValue constant
+      ],
+    },
+    {
+      provide: OpenRouterController,
+      useFactory: buildOpenRouterController,
+      inject: [
+        OpenRouterService,
+        FinancialAgentService,
+        'APP_CONSTANTS',
       ],
     },
   ],

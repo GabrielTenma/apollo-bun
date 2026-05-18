@@ -19,7 +19,21 @@ export interface NewsItem {
  */
 @Injectable()
 export class FinancialJuiceTarget {
-  constructor(private readonly scraperService: ScraperService) {}
+  // Assigned by the static factory; never `undefined` after construction
+  scraperService!: ScraperService;
+
+  private constructor() {}
+
+  /**
+   * Static factory so NestJS can bypass broken @ClassProvider metadata entirely.
+   */
+  static create(
+    scraperService: ScraperService,
+  ): FinancialJuiceTarget {
+    const target = new FinancialJuiceTarget();
+    target.scraperService = scraperService;
+    return target;
+  }
 
   getOptions(): ScrapeOptions {
     return {

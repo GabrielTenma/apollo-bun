@@ -25,38 +25,21 @@ class CreateUserDto {
 
 @Controller('/api/v1/auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  // Assigned by the static factory
+  authService!: AuthService;
+
+  private constructor() {}
 
   /**
-   * Login endpoint - validates credentials and returns JWT tokens.
-   *
-   * @example Request:
-   * POST /auth/login
-   * {
-   *   "email": "admin@example.com",
-   *   "password": "password123"
-   * }
-   *
-   * @example Response:
-   * {
-   *   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-   *   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-   *   "expiresIn": 3600
-   * }
+   * Static factory. Nest resolves every dependency from the module's
+   * `useFactory` so `design:paramtypes` metadata is never needed.
    */
-  /**
-   * Create user endpoint - creates a new user with the provided credentials.
-   * Requires a valid creation key from config.
-   *
-   * @example Request:
-   * POST /auth/create-user
-   * {
-   *   "email": "user@example.com",
-   *   "password": "password123",
-   *   "role": "user",
-   *   "creationKey": "secret-key-from-config"
-   * }
-   */
+  static create(authService: AuthService): AuthController {
+    const ctrl = new AuthController();
+    ctrl.authService = authService;
+    return ctrl;
+  }
+
   @Public()
   @Post('create-user')
   async createUser(@Body() createUserDto: CreateUserDto) {
@@ -83,19 +66,10 @@ export class AuthController {
     return {
       ...tokens,
       tokenType: 'Bearer',
-      expiresIn: 3600, // 60 minutes in seconds
+      expiresIn: 3600,
     };
   }
 
-  /**
-   * Refresh token endpoint - generates new token pair using refresh token.
-   *
-   * @example Request:
-   * POST /auth/refresh
-   * {
-   *   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-   * }
-   */
   @Public()
   @Post('refresh')
   async refresh(@Body() refreshDto: RefreshTokenDto, @Req() req: Request) {
@@ -112,12 +86,8 @@ export class AuthController {
     };
   }
 
-  /**
-   * Example of role-protected route.
-   * Only users with 'admin' role can access this.
-   */
   @Get('admin-only')
-  @UseGuards(JwtAuthGuard) // Not needed if global, but explicit here for clarity
+  @UseGuards(JwtAuthGuard)
   @Roles('admin')
   getAdminData(@CurrentUser() user: JwtPayload) {
     return {
@@ -130,10 +100,6 @@ export class AuthController {
     };
   }
 
-  /**
-   * Example of multi-role route.
-   * Users with 'admin' OR 'moderator' role can access.
-   */
   @Get('moderator-or-admin')
   @Roles('admin', 'moderator')
   getModeratorData(@CurrentUser() user: JwtPayload) {
@@ -143,11 +109,8 @@ export class AuthController {
     };
   }
 
-  /**
-   * Public route - no authentication required.
-   */
   @Get('profile')
-  @Roles() // No roles required - any authenticated user
+  @Roles()
   getProfile(@CurrentUser() user: JwtPayload) {
     return {
       id: user.sub,

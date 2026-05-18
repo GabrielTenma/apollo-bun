@@ -13,9 +13,22 @@ import {
  */
 @Controller('/api/v1/telegram')
 export class TelegramController {
-  private readonly logger = new Logger(TelegramController.name);
+  // Assigned by the static factory; never `undefined` after construction
+  telegramService!: TelegramService;
+  logger!: Logger;
 
-  constructor(private readonly telegramService: TelegramService) {}
+  private constructor() {}
+
+  /**
+   * Static factory — NestJS resolves every dependency from the module's
+   * `useFactory` so `design:paramtypes` metadata is never needed.
+   */
+  static create(telegramService: TelegramService): TelegramController {
+    const ctrl = new TelegramController();
+    ctrl.telegramService = telegramService;
+    ctrl.logger = new Logger(TelegramController.name);
+    return ctrl;
+  }
 
   /**
    * Webhook endpoint for receiving Telegram updates

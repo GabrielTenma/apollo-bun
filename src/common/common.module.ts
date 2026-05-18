@@ -59,8 +59,10 @@ function createRolesGuard(reflector: Reflector): RolesGuard {
   ],
   providers: [
     // Guards: Applied globally in order (JWT authentication first, then Roles authorization)
-    JwtAuthGuard,
-    RolesGuard,
+    // JwtAuthGuard / RolesGuard are NOT listed as bare class entries here — their
+    // private constructors (require Reflector via reflection) break under tsx/esbuild.
+    // They are provided instead via APP_GUARD factory entries below, which inject
+    // Reflector explicitly.
     {
       provide: APP_GUARD,
       useFactory: createJwtAuthGuard,
@@ -98,7 +100,9 @@ function createRolesGuard(reflector: Reflector): RolesGuard {
     CommonConfigService,
   ],
   exports: [
-    // Export the classes so they can be injected or used explicitly if needed
+    // Guard classes are re-exported for type imports; they are fetched from the
+    // DI container via the factory-created APP_GUARD entries above, not via
+    // direct class-type provider resolution.
     JwtAuthGuard,
     RolesGuard,
     TransformInterceptor,

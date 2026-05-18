@@ -15,8 +15,20 @@ import * as os from 'node:os';
  */
 @Injectable()
 export class ScraperService {
-  private readonly logger = new Logger(ScraperService.name);
-  private browser: Browser | null = null;
+  // Assigned by the static factory; never `undefined` after construction
+  logger: Logger;
+  browser: Browser | null = null;
+
+  private constructor() {}
+
+  /**
+   * Static factory so NestJS can bypass broken @ClassProvider metadata entirely.
+   */
+  static create(): ScraperService {
+    const svc = new ScraperService();
+    svc.logger = new Logger(ScraperService.name);
+    return svc;
+  }
 
   /**
    * Initializes and returns a Playwright browser instance.
