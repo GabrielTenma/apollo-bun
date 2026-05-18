@@ -1,9 +1,9 @@
-import { OpenRouterService } from './openrouter.service';
+import { OpenRouterService } from './openrouter.service.ts';
 import {
   ChatCompletionOptions,
   ChatMessage,
-} from './openrouter.interface';
-import { PromptConfig } from './financialagent.interface';
+} from '../openrouter/interfaces/openrouter.interface.ts';
+import { PromptConfig } from '../openrouter/interfaces/financialagent.interface.ts';
 
 export class FinancialAgentService {
   constructor(public openRouterService: OpenRouterService) {}

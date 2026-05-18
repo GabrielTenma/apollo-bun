@@ -1,6 +1,4 @@
-/**
- * Barrel file for lib utilities
- */
+/** Barrel file for lib utilities */
 
 // Response utilities
 export {
@@ -9,7 +7,7 @@ export {
   successResponse,
   errorResponse,
   paginatedResponse,
-} from './response.util';
+} from './response.util.ts';
 
 // Pagination utilities
 export {
@@ -18,7 +16,7 @@ export {
   normalizePagination,
   getPaginationMeta,
   getPagination,
-} from './pagination.util';
+} from './pagination.util.ts';
 
 // Date utilities
 export {
@@ -27,7 +25,7 @@ export {
   addTime,
   isExpired,
   dateDiff,
-} from './date.util';
+} from './date.util.ts';
 
 // String utilities
 export {
@@ -39,11 +37,11 @@ export {
   randomString,
   slugify,
   truncate,
-} from './string.util';
+} from './string.util.ts';
 
 // Memory Key Store utilities
 export {
   MemoryKeyStore,
   memoryKeyStore,
   MemoryEntry,
-} from './memory-key-store';
+} from './memory-key-store.ts';

@@ -1,5 +1,4 @@
 import { DataSource } from 'typeorm';
-import { SupabaseOrmService } from './supabase-orm.service';
 
 export class SupabaseOrmService {
   constructor(private dataSource: DataSource) {}
@@ -9,17 +8,17 @@ export class SupabaseOrmService {
   }
 
   async findAll<T>(entity: any): Promise<T[]> {
-    return this.getRepository(entity).find();
+    return this.getRepository(entity).find() as unknown as T[];
   }
 
   async findOne<T>(entity: any, id: number | string): Promise<T | null> {
-    return this.getRepository(entity).findOneBy({ id } as any);
+    return this.getRepository(entity).findOneBy({ id } as any) as unknown as T | null;
   }
 
   async create<T>(entity: any, data: any): Promise<T> {
     const repo = this.getRepository(entity);
     const instance = repo.create(data);
-    return repo.save(instance);
+    return repo.save(instance) as unknown as T;
   }
 
   async update<T>(entity: any, id: number | string, data: any): Promise<T> {

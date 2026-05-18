@@ -1,5 +1,5 @@
-import { RoutineService } from '../routine.service';
-import { SupabaseService } from './supabase.service';
+import { RoutineService } from '../routine.service.ts';
+import { SupabaseService } from './supabase.service.ts';
 
 export class SupabaseRoutineService {
   private readonly routineName = 'supabase-routine';

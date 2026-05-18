@@ -1,9 +1,15 @@
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { env } from '../config/env';
-import { UserEntity } from '../supabase/entities/user.entity';
-import { UserSessionEntity } from '../supabase/entities/user-session.entity';
-import { JwtPayload } from './strategies/jwt.strategy';
+import { env } from '../../config/index.ts';
+import { UserEntity } from '../../supabase/entities/user.entity.ts';
+import { UserSessionEntity } from '../../supabase/entities/user-session.entity.ts';
+import { JwtPayload } from '../../auth/strategies/jwt.strategy.ts';
+
+export interface UserRoles {
+  id: string;
+  email: string;
+  roles: string[];
+}
 
 export class AuthService {
   constructor(

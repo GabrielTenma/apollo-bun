@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
     "target": "es2017",
-    "module": "ESNext",
+    "module": "Bundler",
     "lib": ["es2017", "DOM"],
     "declaration": true,
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": ".",
-    "incremental": true,
+    "incremental": false,
     "skipLibCheck": true,
     "strictNullChecks": false,
     "noImplicitAny": false,
@@ -16,7 +16,8 @@
     "noFallthroughCasesInSwitch": false,
     "jsx": "react-jsx",
     "esModuleInterop": true,
-    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "Bundler",
     "paths": {
       "@/*": ["./src/*"]
     }

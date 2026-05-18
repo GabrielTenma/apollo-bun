@@ -50,7 +50,7 @@ const userRepo = AppDataSource.getRepository(UserEntity);
 const sessionRepo = AppDataSource.getRepository(UserSessionEntity);
 
 // ─── auth service (jwtSign/verify via Elysia jwt plugin — see Step 7) ──
-const authService = new AuthService(null, userRepo, sessionRepo);
+const authService = new AuthService(userRepo, sessionRepo);
 
 // ─── scrape targets ────────────────────────────────────────────
 const financialJuiceTarget = new FinancialJuiceTarget(scraperService);
@@ -92,10 +92,10 @@ const app = new Elysia()
     const result = await store.authService.createUser((body as any).email, (body as any).password);
     return { success: true, data: result };
   })
-  .post('/api/v1/auth/login', async ({ body, set, store }) => {
+  .post('/api/v1/auth/login', async ({ body, set, setCookie, store }) => {
     const result = await store.authService.login((body as any).email, (body as any).password);
     if (result.accessToken) {
-      set.cookie.token('refresh_token', result.refreshToken, {
+      setCookie('refresh_token', result.refreshToken, {
         httpOnly: true,
         maxAge: 60 * 60 * 24 * 7,
         path: '/',
@@ -103,14 +103,14 @@ const app = new Elysia()
     }
     return { success: true, data: result };
   })
-  .post('/api/v1/auth/refresh', async ({ cookie, set, store }) => {
+  .post('/api/v1/auth/refresh', async ({ cookie, set, setCookie, store }) => {
     const refreshToken = cookie.refresh_token;
     if (!refreshToken) {
       set.status = 401;
       return { success: false, message: 'No refresh token' };
     }
     const tokens = await store.authService.refreshTokens(refreshToken);
-    set.cookie.token('refresh_token', tokens.refreshToken, {
+    setCookie('refresh_token', tokens.refreshToken, {
       httpOnly: true,
       maxAge: 60 * 60 * 24 * 7,
       path: '/',

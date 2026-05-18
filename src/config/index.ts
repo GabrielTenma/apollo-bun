@@ -1,2 +1,2 @@
 // src/config/index.ts — barrel
-export * from './env';
+export * from './env.ts';
