@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
     "target": "es2017",
-    "module": "esnext",
-    "lib": ["es2017"],
+    "module": "ESNext",
+    "lib": ["es2017", "DOM"],
     "declaration": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    "baseUrl": ".",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
@@ -16,12 +16,10 @@
     "noFallthroughCasesInSwitch": false,
     "jsx": "react-jsx",
     "esModuleInterop": true,
-    "moduleResolution": "nodenext",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": false,
-    "emitDecoratorMetadata": false,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true
+    "moduleResolution": "NodeNext",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "src/web", "vite.config.ts"]

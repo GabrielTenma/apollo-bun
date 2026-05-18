@@ -1,6 +1,2 @@
 # Apollo — bun runtime config
-# Preloads reflect-metadata before any NestJS ESM module is evaluated,
-# so-design:paramtypes) lookups used by NestJS 9's ClassProvider DI resolver
-# always find the polyfilled global Reflect API even under bun's ESM scope.
-
-preload = ["reflect-metadata"]
+# reflect-metadata preload removed — Elysia has no dependency on it.
