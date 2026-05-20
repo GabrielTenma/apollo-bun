@@ -4,10 +4,13 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { UserEntity } from './user.entity.ts';
 
 @Entity({ name: 'user_sessions' })
+@Index('idx_session_token_hash', ['refresh_token_hash'])
+@Index('idx_session_user', ['user_id'])
 export class UserSessionEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

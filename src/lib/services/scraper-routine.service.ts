@@ -1,3 +1,4 @@
+import * as os from 'node:os';
 import * as crypto from 'crypto';
 import { RoutineService } from '../routine.service.ts';
 import { CoinmarketCapTarget } from '../../scraper/target/coinmarketcap.target.ts';
@@ -38,7 +39,7 @@ export class ScraperRoutineService {
         ];
         const scrapeAllResult = await this.scraperService.scrapeMultiple(
           scrapeOptions,
-          1,
+          Math.max(1, Math.floor(os.cpus().length / 2)),
           true,
           0,
         );
@@ -54,18 +55,21 @@ export class ScraperRoutineService {
           this.coinMarketCapTarget.parsePriceList(
             scrapeAllResult[0].content || '',
           ),
+          120_000,  // 2-min TTL so stale data is evicted if the routine stops
         );
         scrapedContentStore.set(
           'yahoofinance',
           this.yahooFinanceTarget.parseNewsItems(
             scrapeAllResult[1].content || '',
           ),
+          120_000,
         );
         scrapedContentStore.set(
           'financialjuice',
           this.financialJuiceTarget.parseNewsItems(
             scrapeAllResult[2].content || '',
           ),
+          120_000,
         );
 
         console.log(`scrape routine done ${scrapeAllResult.length}`);

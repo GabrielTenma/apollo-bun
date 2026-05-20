@@ -1,7 +1,11 @@
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, ReactNode, useCallback, memo } from "react";
 import Markdown from "react-markdown";
 import Gfm from "remark-gfm";
 import StickyNavBar from "../NavigationBar/StickyNavBar";
+
+const RETRY_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 2_000;
+const COMPLETION_URL = '/api/v1/openrouter/completion';
 
 interface ContentItem {
   latest: string;
@@ -70,35 +74,50 @@ const markdownComponents = {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export default function PortfolioBlock() {
+const MarkdownView = React.memo(function MarkdownView({ content }: { content: string }) {
+  return (
+    <Markdown remarkPlugins={[Gfm]} components={markdownComponents}>
+      {content || "No latest completion available"}
+    </Markdown>
+  );
+});
+
+export default React.memo(function PortfolioBlock() {
   const [latest, setLatest] = useState<string>("");
   const [previous, setPrevious] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
+    setError("");
+    const res = await fetch(COMPLETION_URL, { signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json: CompletionApiResponse = await res.json();
+    if (!json.success) throw new Error(json.success === false ? (json as any).message : 'Unknown error');
+    setLatest(json.data.latest);
+    setPrevious(json.data.previous);
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const controller = new AbortController();
+
+    let attempt = 0;
+    const run = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:3000/api/v1/openrouter/completion",
-        );
-
-        const json: CompletionApiResponse = await response.json();
-
-        if (json.success) {
-          setLatest(json.data.latest);
-          setPrevious(json.data.previous);
+        await fetchData(controller.signal);
+      } catch (e: any) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        attempt++;
+        if (attempt <= RETRY_ATTEMPTS) {
+          await new Promise<void>((r) => setTimeout(r, RETRY_DELAY_MS));
+          return run();
         }
-
-        console.debug("Fetch OK:", json);
-      } catch (error) {
-        console.error("Fetch error:", error);
-      } finally {
-        setLoading(false);
+        setError(e.message ?? 'Failed to load');
       }
     };
 
-    fetchData();
-  }, []);
+    run();
+    return () => controller.abort();
+  }, [fetchData]);
 
   return (
     <>
@@ -115,15 +134,7 @@ export default function PortfolioBlock() {
                 <h3 className="text-base-content text-3xl font-semibold">
                   Latest Completion
                 </h3>
-                <Markdown
-                  remarkPlugins={[Gfm]}
-                  components={markdownComponents}
-                >
-                  {/* {loading
-                    ? "Loading..."
-                    : latest || "No latest completion available"} */}
-                  {latest || "No latest completion available"}
-                </Markdown>
+                <MarkdownView content={latest} />
 
                 <hr className="border-base-content/20" />
 
@@ -134,7 +145,7 @@ export default function PortfolioBlock() {
                       Correlation:
                     </span>
                     <span className="text-base-content/80">
-                      {latest && previous ? "Has previous" : "No previous data"}
+                      {latest && previous && !error ? "Has previous" : error ? "Error: " + error : "No previous data"}
                     </span>
                   </div>
                 </div>
@@ -145,4 +156,4 @@ export default function PortfolioBlock() {
       </div>
     </>
   );
-}
+});

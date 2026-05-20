@@ -19,6 +19,7 @@ export interface ScrapeOptions {
   addPageEvaluate?: (() => void)[];
   pageLocatorPerformAutoScroll?: boolean;
   addPageEvaluateLazyScroll?: boolean;
+  maxScrollAttempts?: number;
 }
 
 export interface ScrapeResult {

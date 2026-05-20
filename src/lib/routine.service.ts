@@ -28,8 +28,7 @@ export class RoutineService {
       await routineFn();
       console.log(`Routine "${routineName}" completed successfully`);
     } catch (error: any) {
-      console.error(`Routine "${routineName}" failed:`, error.message);
-      throw error;
+      log.error?.({ error: error.message, route: `routine:${routineName}` });
     }
   }
 
@@ -50,6 +49,8 @@ export class RoutineService {
       `Starting routine "${routineName}" with interval ${intervalMs}ms (mode: ${executionMode})`,
     );
 
+    // skip and overlap both use setInterval to avoid the complexity of
+    // per-mode branching; the key difference: 'wait' uses recursive setTimeout.
     if (executionMode === 'overlap' || executionMode === 'skip') {
       const id = setInterval(
         () => void this.executeRoutine(routineName, routineFn),
@@ -59,19 +60,22 @@ export class RoutineService {
       return id as unknown as number;
     }
 
-    // wait mode: next timer is only set after current run completes
+    // 'wait' mode: next timer is only set after current run completes
     let active = true;
-    const run = async () => {
+    const run = (): void => {
       if (!active) return;
-      try {
-        await this.executeRoutine(routineName, routineFn);
-      } catch {
-        // already logged
-      }
-      if (active) {
-        const id = setTimeout(run, intervalMs);
-        this.intervals.set(routineName, id);
-      }
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      (async () => {
+        try {
+          await this.executeRoutine(routineName, routineFn);
+        } catch {
+          // already logged in executeRoutine
+        }
+        if (active) {
+          const id = setTimeout(run, intervalMs);
+          this.intervals.set(routineName, id);
+        }
+      })();
     };
     const first = setTimeout(run, 0);
     this.intervals.set(routineName, first);
@@ -81,7 +85,6 @@ export class RoutineService {
   stopRoutine(routineName: string): void {
     const h = this.intervals.get(routineName);
     if (h != null) {
-      clearInterval(h);
       clearTimeout(h);
       this.intervals.delete(routineName);
       console.log(`Stopped routine: ${routineName}`);
@@ -90,7 +93,6 @@ export class RoutineService {
 
   stopAllRoutines(): void {
     for (const [routineName, h] of this.intervals.entries()) {
-      clearInterval(h);
       clearTimeout(h);
       console.log(`Stopped routine: ${routineName}`);
     }

@@ -118,13 +118,16 @@ export class ScraperService {
       }
 
       if (options.addPageEvaluateLazyScroll) {
+        const maxScrollAttempts = options.maxScrollAttempts ?? 50;
         let previousHeight;
-        while (true) {
+        let attempts = 0;
+        while (attempts < maxScrollAttempts) {
           previousHeight = await page.evaluate('document.body.scrollHeight');
           await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
           await page.waitForTimeout(2000);
           const currentHeight = await page.evaluate('document.body.scrollHeight');
           if (currentHeight === previousHeight) break;
+          attempts++;
         }
       }
 

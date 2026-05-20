@@ -6,7 +6,7 @@ import { MemoryKeyStore } from '../memory-key-store.ts';
 import * as crypto from 'crypto';
 
 export class OpenrouterRoutineService {
-  private routineTime = 20000;
+  private readonly BASE_INTERVAL = 20_000;
 
   constructor(
     public routineService: RoutineService,
@@ -65,14 +65,11 @@ export class OpenrouterRoutineService {
             chatCompletionDataEntity,
           );
           await this.scrapedDataRepository.save(scrapedData);
-
-          this.routineTime = 100000;
         } else {
           console.log('Not ready yet! skipped.');
-          this.routineTime = 20000;
         }
       },
-      this.routineTime,
+      this.BASE_INTERVAL,
     );
   }
 
