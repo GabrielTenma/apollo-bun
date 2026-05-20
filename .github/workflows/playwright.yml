@@ -10,10 +10,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: oven-sh/setup-bun@v1
     - name: Install dependencies
       run: bun install
+    - name: Cache Playwright Browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+        restore-keys: |
+          playwright-${{ runner.os }}-bun-
+
     - name: Install Playwright Browsers
-      run: bunx playwright install --with-deps
+      # On cache-hit `playwright install` is a near-instant no-op.
+      # `--with-deps` runs apt-get; the condition below skips it on a warm cache
+      # because the cached-dir check succeeds before the ssh-agent step.
+      run: if [ -d "$HOME/.cache/ms-playwright" ]; then bunx playwright install; else bunx playwright install --with-deps; fi
     - name: Run Playwright tests
       run: bunx playwright test
     - uses: actions/upload-artifact@v4
