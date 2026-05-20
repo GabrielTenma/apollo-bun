@@ -30,7 +30,7 @@
     "evlog": "^2.17.0",
     "ink": "^3.2.0",
     "pg": "^8.20.0",
-    "playwright": "latest",
+    "playwright": "^1.60.0",
     "reflect-metadata": "^0.2.2",
     "remark-gfm": "^4.0.1",
     "typeorm": "^0.3.29"
