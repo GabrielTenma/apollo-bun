@@ -6,7 +6,7 @@
 
 - **Author:** GabrielTenma
 - **License:** Apache-2.0
-- **Stack:** Elysia 1.4 · Bun · TypeORM · Playwright · React 19 · Vite · TailwindCSS v4 · DaisyUI · Supabase (PostgreSQL) · OpenRouter AI · Telegram Bot API · bcrypt JWT
+- **Stack:** Elysia 1.4 · Bun · TypeORM · Playwright · React 19 · Vite · TailwindCSS v4 · DaisyUI · Supabase (PostgreSQL) · OpenRouter AI · Telegram Bot API · bcrypt JWT · evlog
 - **Branch:** `migration/bun` — active NestJS → Elysia + Node.js → Bun migration branch; `main` is the old NestJS baseline
 
 ---
@@ -85,11 +85,16 @@ src/
 │   │   └── jwt.strategy.ts           # JwtPayload interface only (Passport strategy removed)
 │   └── (controller/module removed)   # Routes are defined directly in server.ts
 │
-└── web/                              # React frontend (Vite) — independent workspace
-    └── src/
-        ├── App.tsx
-        └── components/
-            └── PortfolioBlock/PortfolioBlock.tsx  # Fetches /api/v1/openrouter/completion; renders Markdown
+└── web/                              # React+ Vite frontend
+    ├── src/                          # Frontend source
+    │   ├── App.tsx
+    │   ├── main.tsx
+    │   ├── index.css
+    │   ├── pages/                    # Route-level pages
+    │   └── components/
+    │       └── PortfolioBlock/PortfolioBlock.tsx  # Fetches /api/v1/openrouter/completion; renders Markdown
+    ├── index.html                    # Vite entry HTML (copied from src/web/index.html)
+    └── vite.config.ts                # Vite config: root = src/web, outDir = dist/web
 ```
 
 ---
@@ -111,6 +116,7 @@ ScrapedDataEntity { source_id: openrouter UUID, status: 'result' }
 GET /api/v1/openrouter/completion  →  latest + previous completions
   ↓  consumed by React frontend (PortfolioBlock)
 GET /api/v1/scraper/financialjuice | yahoofinance | coinmarketcap
+GET /*                           →  React SPA index.html (spa fallback route)
 ```
 
 ---
@@ -141,10 +147,19 @@ GET /api/v1/scraper/financialjuice | yahoofinance | coinmarketcap
 - `MemoryKeyStore` is the only in-memory store for scraped content — no Redis.
 - `scrapedContentStore.set(key, value)` called at end of each scraper/LLM routine; read by controllers via `derive()` store.
 
+### Logging
+- Structured logging via [evlog](https://evlog.dev) v2 — one wide event per error, zero scattered lines.
+- `initLogger()` is called once at server start (line ~59 of `src/server.ts`). No `console.error` / `console.warn` / `console.log` anywhere in production code.
+- `log.error({ error: e.message, route: '/api/v1/…' })` — single-arg `Record<string, unknown>` form used in every catch block. Passes TS type-check without `as any`.
+- Routes that log errors: all auth (`create-user`, `login`, `refresh`) and all telegram (`webhook`, `send-message`, `send-text`, `set-webhook`, `bot-info`).
+- Startup / shutdown `console.log` messages are intentionally raw — those are process-lifecycle signals, not structured events.
+- evlog config is driven from `NODE_ENV` env var; no extra env vars needed. `pretty` mode is auto-detected (dev = on, production = off).
+
 ### JWT Auth
 - JWT sign/verify is performed via Elysia's `app.jwt.sign()` (from `@elysiajs/jwt` plugin).
-- Refresh tokens are stored in HTTP-only cookies; raw tokens are hashed with bcrypt before DB persistence.
+- Refresh tokens are stored in HTTP-only cookies via Elysia 1.x native cookie API (`cookie.<name>.value`, `.httpOnly`, `.maxAge`, `.path`). No `@elysiajs/cookie` plugin is used.
 - Sessions track `user_agent`, `ip_address`, `expires_at`, and `revoked_at`.
+- Refresh token reading: `cookie.refresh_token.value` (returns `Cookie<unknown>`, cast to `string`).
 
 ### Naming
 - snake_case DB columns → camelCase entity properties.

@@ -1,9 +1,9 @@
 // src/server.ts — single entry point replaces main.ts + all NestJS modules
-import { Elysia } from 'elysia';
+import { Elysia, file } from 'elysia';
 import { cors } from '@elysiajs/cors';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { SignJWT } from 'jose';
+import { createRequestLogger, initLogger, log } from 'evlog';
 import { env } from './config/env.ts';
 
 import { AppDataSource } from './lib/db.ts';
@@ -48,13 +48,21 @@ const supabaseService = new SupabaseService();
 
 // ─── TypeORM bootstrap ─────────────────────────────────────────
 await AppDataSource.initialize().catch((err: any) =>
-  console.error('TypeORM DataSource init failed:', err),
+  log.error({ error: err.message, step: 'typeorm-init' }),
 );
 const scrapedDataRepo = AppDataSource.getRepository(ScrapedDataEntity);
 const scrapingSourceRepo = AppDataSource.getRepository(ScrapingSourceEntity);
 const userRepo = AppDataSource.getRepository(UserEntity);
 const sessionRepo = AppDataSource.getRepository(UserSessionEntity);
 const authService = new AuthService(userRepo, sessionRepo);
+
+// ─── evlog bootstrap ────────────────────────────────────────────
+initLogger({
+  env: {
+    service: 'apollo',
+    environment: env.string('NODE_ENV', 'development'),
+  },
+});
 
 const financialJuiceTarget = new FinancialJuiceTarget(scraperService);
 const yahooFinanceTarget = new YahooFinanceTarget(scraperService);
@@ -69,7 +77,6 @@ const app = new Elysia()
     name: 'jwt',
     secret: env.string('JWT_SECRET') ?? '',
   }))
-  .use(cookie())
 
   // ─── health ────────────────────────────────────────────────
   .get('/health', () => ({ status: 'ok', service: 'apollo-elysia' }))
@@ -87,6 +94,7 @@ const app = new Elysia()
         );
         return { success: true };
       } catch (e: any) {
+        log.error({ error: e.message, route: '/api/v1/auth/create-user' });
         set.status = 400;
         return { success: false, message: e.message };
       }
@@ -94,7 +102,7 @@ const app = new Elysia()
   )
   .post(
     '/api/v1/auth/login',
-    async ({ body, set, setCookie }) => {
+    async ({ body, set, cookie }) => {
       try {
         const email = (body as any)?.email;
         const password = (body as any)?.password;
@@ -109,14 +117,14 @@ const app = new Elysia()
         const accessToken = await new SignJWT(accessTokenPayload).setProtectedHeader({ alg: 'HS256' }).setExpirationTime(env.string('JWT_ACCESS_EXPIRATION', '1d')).sign(_jwtSecret);
         const refreshToken = await new SignJWT(refreshTokenPayload).setProtectedHeader({ alg: 'HS256' }).setExpirationTime(env.string('JWT_REFRESH_EXPIRATION', '7d')).sign(_jwtSecret);
 
-        setCookie('refresh_token', rawRefreshToken, {
-          httpOnly: true,
-          maxAge: 60 * 60 * 24 * 7,
-          path: '/',
-        });
+        cookie.refresh_token.value = rawRefreshToken;
+        cookie.refresh_token.httpOnly = true;
+        cookie.refresh_token.maxAge = 60 * 60 * 24 * 7;
+        cookie.refresh_token.path = '/';
 
         return { success: true, data: { accessToken, refreshToken } };
       } catch (e: any) {
+        log.error({ error: e.message, route: '/api/v1/auth/login' });
         set.status = 401;
         return { success: false, message: e.message };
       }
@@ -124,13 +132,9 @@ const app = new Elysia()
   )
   .post(
     '/api/v1/auth/refresh',
-    async ({ cookie, set, setCookie }) => {
+    async ({ cookie, set }) => {
       try {
-        // Elysia v1 cookie derives { value: string } wrapper objects
-        const rtCookie = (cookie as any)?.['refresh_token'];
-        const refreshToken = typeof rtCookie === 'string'
-          ? rtCookie
-          : rtCookie?.value;
+        const refreshToken = cookie.refresh_token.value as string;
         if (!refreshToken) {
           set.status = 401;
           return { success: false, message: 'No refresh token' };
@@ -142,13 +146,13 @@ const app = new Elysia()
         const accessToken = await new SignJWT(accessTokenPayload).setProtectedHeader({ alg: 'HS256' }).setExpirationTime(env.string('JWT_ACCESS_EXPIRATION', '1d')).sign(_jwtSecret);
         const refreshTokenSigned = await new SignJWT(refreshTokenPayload).setProtectedHeader({ alg: 'HS256' }).setExpirationTime(env.string('JWT_REFRESH_EXPIRATION', '7d')).sign(_jwtSecret);
 
-        setCookie('refresh_token', rawRefreshToken, {
-          httpOnly: true,
-          maxAge: 60 * 60 * 24 * 7,
-          path: '/',
-        });
+        cookie.refresh_token.value = rawRefreshToken;
+        cookie.refresh_token.httpOnly = true;
+        cookie.refresh_token.maxAge = 60 * 60 * 24 * 7;
+        cookie.refresh_token.path = '/';
         return { success: true, data: { accessToken, refreshToken: refreshTokenSigned } };
       } catch (e: any) {
+        log.error({ error: e.message, route: '/api/v1/auth/refresh' });
         set.status = 401;
         return { success: false, message: e.message };
       }
@@ -226,12 +230,13 @@ const app = new Elysia()
     return { success: true, data: { latest, previous } };
   })
 
-  // ─── telegram routes ─────────────────────────────────────────
+  // ─── telegram routes ──────────────────────────────────────────
   .post('/api/v1/telegram/webhook', async ({ body }) => {
     try {
       await telegramService.sendMessage({ chat_id: (body as any).chatId, text: (body as any).text || '' });
       return { success: true };
     } catch (e: any) {
+      log.error({ error: e.message, route: '/api/v1/telegram/webhook' });
       return { success: false, message: e.message };
     }
   })
@@ -240,6 +245,7 @@ const app = new Elysia()
       const result = await telegramService.sendMessage({ chat_id: (body as any).chatId, text: (body as any).text });
       return { success: true, data: result };
     } catch (e: any) {
+      log.error({ error: e.message, route: '/api/v1/telegram/send-message' });
       return { success: false, message: e.message };
     }
   })
@@ -248,6 +254,7 @@ const app = new Elysia()
       await telegramService.sendText((body as any).chatId, (body as any).text, (body as any).parseMode);
       return { success: true };
     } catch (e: any) {
+      log.error({ error: e.message, route: '/api/v1/telegram/send-text' });
       return { success: false, message: e.message };
     }
   })
@@ -256,6 +263,7 @@ const app = new Elysia()
       await telegramService.setWebhook((body as any).url, (body as any).secret);
       return { success: true };
     } catch (e: any) {
+      log.error({ error: e.message, route: '/api/v1/telegram/set-webhook' });
       return { success: false, message: e.message };
     }
   })
@@ -264,10 +272,10 @@ const app = new Elysia()
       const info = await telegramService.getMe();
       return { success: true, data: info };
     } catch (e: any) {
+      log.error({ error: e.message, route: '/api/v1/telegram/bot-info' });
       return { success: false, message: e.message };
     }
   })
-  .get('/api/v1/telegram/health', () => ({ status: 'ok', service: 'telegram' }))
 
   // ─── supabase routes ──────────────────────────────────────────
   .get('/api/v1/supabase/health', () => ({ status: 'ok', service: 'supabase' }))
@@ -290,6 +298,14 @@ const app = new Elysia()
   .delete('/api/v1/supabase/delete', async ({ body }) => {
     const result = await supabaseService.delete((body as any).table, (body as any).id);
     return { success: true, data: result };
+  })
+
+  // ─── static file serving + SPA fallback ───────────────────
+  .get('/', () => file('dist/web/index.html'))
+  .get('*', async ({ params }) => {
+    const p = 'dist/web/' + params['*'];
+    if (await Bun.file(p).exists()) return file(p);
+    return file('dist/web/index.html');
   })
 
 // .listen() starts accepting requests — place at end to signal readiness

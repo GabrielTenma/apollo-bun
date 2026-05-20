@@ -11,10 +11,6 @@ interface ContentItem {
 interface CompletionApiResponse {
   success: boolean;
   data: ContentItem[];
-  message?: string;
-  correlation_id: string;
-  timestamp: string;
-  status_code: number;
 }
 
 const TABLE_CLS = "table table-xs table-pin-rows table-pin-cols";
@@ -124,9 +120,10 @@ export default function PortfolioBlock() {
                   remarkPlugins={[Gfm]}
                   components={markdownComponents}
                 >
-                  {loading
+                  {/* {loading
                     ? "Loading..."
-                    : latest || "No latest completion available"}
+                    : latest || "No latest completion available"} */}
+                    {latest || "No latest completion available"}
                 </Markdown>
 
                 <hr className="border-base-content/20" />
