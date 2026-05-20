@@ -10,7 +10,7 @@ export class SupabaseService {
 
   private initializeClients() {
     const configs: Record<string, string> = {};
-    for (const [key, value] of Object.entries(process.env)) {
+    for (const [key, value] of Object.entries(Bun.env)) {
       if (key.startsWith('SUPABASE_')) configs[key] = value;
     }
 

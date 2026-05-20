@@ -1,5 +1,5 @@
-import { ScraperService } from '../../lib/services/scraper.service';
-import { ScrapeOptions } from '../interfaces/scraper.interface';
+import { ScraperService } from '../../lib/services/scraper.service.ts';
+import { ScrapeOptions } from '../interfaces/scraper.interface.ts';
 import * as cheerio from 'cheerio';
 
 export interface NewsItem {

@@ -2,137 +2,92 @@
 
 ## Project Overview
 
-**Apollo** is a NestJS + React monolith that scrapes economics/financial news from multiple sources, synthesizes the data with OpenRouter AI, and delivers formatted market analysis via Telegram bot and a React frontend.
+**Apollo** is an Elysia + Bun server that scrapes economics/financial news from multiple sources, synthesizes the data with OpenRouter AI, and delivers formatted market analysis via Telegram bot and a React frontend.
 
 - **Author:** GabrielTenma
 - **License:** Apache-2.0
-- **Stack:** NestJS 9 · TypeORM · Playwright · React 19 · Vite · TailwindCSS v4 · DaisyUI · Supabase (PostgreSQL) · OpenRouter AI · Telegram Bot API · Passport JWT
+- **Stack:** Elysia 1.4 · Bun · TypeORM · Playwright · React 19 · Vite · TailwindCSS v4 · DaisyUI · Supabase (PostgreSQL) · OpenRouter AI · Telegram Bot API · bcrypt JWT
+- **Branch:** `migration/bun` — active NestJS → Elysia + Node.js → Bun migration branch; `main` is the old NestJS baseline
 
 ---
 
 ## Architecture
 
-### Directory Layout
+### Directory Layout (post-migration)
 
 ```
 src/
-├── main.ts                         # NestJS bootstrap; serves Vite-built frontend with SPA fallback
-├── app.module.ts                   # Root module; wires all feature modules, interceptors, filters
-├── app.controller.ts               # Health / root GET -> "Hello World!"
-├── app.service.ts                  # (empty placeholder)
+├── server.ts                       # Elysia entry point; replaces main.ts + all NestJS modules
 │
-├── constants/
-│   ├── app.constants.ts            # APP_CONSTANTS token; app name + in-memory scrapedContentStore (MemoryKeyStore)
-│   └── app.module.ts               # Global module providing APP_CONSTANTS
+├── config/
+│   ├── env.ts                       # Bun.env helper (env.string / env.number / env.bool)
+│   └── index.ts                     # barrel export
 │
-├── common/                         # Shared cross-cutting concerns (global)
-│   ├── common.module.ts            # Registers global guards, interceptors, filters, routine services, ConfigService
-│   ├── config/
-│   │   ├── config.module.ts        # Global CommonConfigService provider
-│   │   ├── config.service.ts       # Thread-safe env-var cache (reads process.env eagerly)
-│   │   └── index.ts
-│   ├── decorators/
-│   │   ├── current-user.decorator.ts   # @CurrentUser() extracts JWT payload
-│   │   ├── public.decorator.ts         # @Public() sets skip-auth metadata
-│   │   └── roles.decorator.ts          # @Roles('admin') sets required-role metadata
-│   ├── filters/
-│   │   └── http-exception.filter.ts    # Global HttpException filter (standard wrapper)
-│   ├── guards/
-│   │   ├── jwt-auth.guard.ts     # Extends Passport AuthGuard('jwt'); bypasses on @Public()
-│   │   └── roles.guard.ts        # RBAC: checks @Roles() against req.user.roles; short-circuits if none
-│   ├── interceptors/
-│   │   ├── logging.interceptor.ts   # Logs request/response
-│   │   └── transform.interceptor.ts # Wraps responses in success/error envelope
-│   ├── routines/
-│   │   ├── config/
-│   │   │   ├── routine.config.module.ts  # ROUTINE_CONFIG token; RoutineConfigService
-│   │   │   └── routine.config.ts         # enabled + executionMode('wait'|'skip'|'overlap')
-│   │   └── services/
-│   │       ├── routine.service.ts        # startRoutine / stopRoutine / executeRoutine; 'wait' mode = recursive setTimeout
-│   │       └── example-routine.service.ts
-│   ├── typeorm/
-│   │   ├── typeorm.module.ts         # TypeORM forRootAsync(DATABASE_URL); autoLoadEntities
-│   │   └── typeorm.service.ts        # Generic CRUD via DataSource (SupabaseOrmService)
-│   └── utils/
-│       ├── index.ts
-│       ├── date.util.ts
-│       ├── memory-key-store.util.ts   # In-memory store; TTL, getOrSet with async factory, dedup key
-│       ├── pagination.util.ts
-│       ├── response.util.ts           # successResponse / errorResponse / paginatedResponse
-│       └── string.util.ts
+├── lib/                             # Core library — plain classes, no framework
+│   ├── db.ts                         # Manual TypeORM DataSource (AppDataSource)
+│   ├── routine.service.ts            # startRoutine / stopRoutine / executeRoutine; 'wait' mode = recursive setTimeout
+│   ├── memory-key-store.ts           # In-memory store; TTL, getOrSet with async factory
+│   ├── index.ts                      # barrel export
+│   └── services/
+│       ├── auth.service.ts           # createUser / login / buildAccessTokenPayload / buildRefreshTokenPayload / refreshTokens
+│       ├── scraper.service.ts        # scrape / extractStructuredData / scrapeMultiple (semaphore + retry + backoff)
+│       ├── openrouter.service.ts     # createChatCompletion / listModels / chat (fetch, AbortSignal.timeout)
+│       ├── telegram.service.ts       # sendMessage / sendText / getMe / setWebhook / makeRequest (fetch)
+│       ├── supabase.service.ts       # Supabase CRUD via @supabase/supabase-js (multi-connection)
+│       ├── supabase-orm.service.ts   # Generic TypeORM CRUD wrapper (currently unused in server.ts)
+│       ├── financial-agent.service.ts # FinancialAgentService: hedge-fund style prompt → OpenRouter
+│       ├── scraper-routine.service.ts  # 3-target scrapeMultiple every 20 s → MemoryKeyStore + ScrapedDataEntity
+│       ├── openrouter-routine.service.ts # Reads scraped store → FinancialAgentService → stores completion
+│       └── supabase-routine.service.ts  # Placeholder: periodic Supabase work
 │
-├── auth/
-│   ├── auth.module.ts              # JwtModule + PassportModule + TypeOrm(UserEntity, UserSessionEntity)
-│   ├── auth.service.ts             # createUser / login / generateAccessToken / generateRefreshToken / refreshTokens
-│   ├── auth.controller.ts          # POST /api/v1/auth/create-user, login, refresh; GET admin-only, profile
-│   └── strategies/jwt.strategy.ts  # Passport Strategy('jwt'); ExtractJwt from Bearer header
-│
-├── openrouter/                     # OpenRouter AI module (global)
-│   ├── openrouter.module.ts        # Global; registers TypeOrm(ScrapedDataEntity) for AI result persistence
-│   ├── openrouter.service.ts       # createChatCompletion / listModels / chat (RN fetch, AbortSignal.timeout)
-│   ├── openrouter.controller.ts    # POST /openrouter/chat, simple-chat; GET /openrouter/models, health, completion
-│   ├── config/
-│   │   └── openrouter.config.ts    # load: openrouter apiKey / baseUrl / defaultModel / timeout
-│   ├── agents/
-│   │   └── financial.agent.ts      # FinancialAgentService: assembles hedge-fund style prompt; calls chat('openrouter/free', …)
+├── scraper/                         # Playwright scrape targets (plain classes, no NestJS decorators)
 │   ├── interfaces/
-│   │   ├── openrouter.interface.ts # ChatMessage, ChatCompletionOptions, ChatCompletionResponse, OpenRouterModel
-│   │   └── financialagent.interface.ts # PromptConfig { financialJuiceContent, yahooFinanceContent, coinmarketCapContent, … }
+│   │   └── scraper.interface.ts      # ScrapeOptions, ScrapeResult, ExtractConfig, ElementSelector
 │   ├── routines/
-│   │   └── openrouter-routine.service.ts  # Reads scraped store → FinancialAgentService → stores completion + saves ScrapedDataEntity
-│   └── examples/
-│       └── basic-usage.example.ts
-│
-├── scraper/                        # Web scraping module (global)
-│   ├── scraper.module.ts           # Global; Playwright chromium; FinancialJuice / YahooFinance / CoinmarketCap targets
-│   ├── scraper.service.ts          # scrape / extractStructuredData / scrapeMultiple (semaphore + retry + backoff)
-│   ├── scraper.controller.ts       # unified API: scrape, scrape-multiple, extract, sources CRUD, scraped-data CRUD
-│   ├── interfaces/
-│   │   └── scraper.interface.ts    # ScrapeOptions, ScrapeResult, ExtractConfig, ElementSelector
-│   ├── routines/
-│   │   └── scraper-routine.service.ts  # 3-target scrapeMultiple every 20s → memory store + ScrapedDataEntity
+│   │   └── scraper-routine.service.ts  # (pending; moved to src/lib/services/)
 │   ├── target/
 │   │   ├── financialjuice.target.ts  # FinancialJuiceTarget: live.financialjuice.com/news → NewsItem[]
 │   │   ├── yahoofinance.target.ts    # YahooFinanceTarget: finance.yahoo.com/news/stream → YahooNewsItem[]
 │   │   └── coinmarketcap.target.ts   # CoinmarketCapTarget: coinmarketcap.com → CoinData[]
-│   └── examples/
-│       └── advanced-usage.example.ts
 │
-├── telegram/                       # Telegram Bot module (global)
-│   ├── telegram.module.ts
-│   ├── telegram.service.ts         # sendMessage / sendText / getMe / setWebhook / makeRequest (fetch)
-│   ├── telegram.controller.ts      # webhook / send-message / send-text / bot-info / set-webhook
-│   ├── config/
-│   │   └── telegram.config.ts      # load: botToken / webhookUrl / webhookSecret / timeout
+├── openrouter/                      # OpenRouter config & types
 │   ├── interfaces/
-│   │   └── telegram.interface.ts   # TelegramMessage, TelegramUpdate, SendMessageOptions, TelegramResponse, …
-│   └── examples/
-│       └── basic-usage.example.ts
+│   │   ├── openrouter.interface.ts   # ChatMessage, ChatCompletionOptions, ChatCompletionResponse, OpenRouterModel
+│   │   └── financialagent.interface.ts # PromptConfig { financialJuiceContent, yahooFinanceContent, … }
+│   └── routines/
+│       └── openrouter-routine.service.ts  # (moved to src/lib/services/)
 │
-├── supabase/                       # Supabase + TypeORM + generic CRUD (global)
-│   ├── supabase.module.ts          # Global; imports SupabaseTypeOrmModule; re-exports SupabaseOrmService
-│   ├── supabase.service.ts         # Supabase CRUD (create / read / update / delete); multi-connection via env prefix SUPABASE_*
-│   ├── supabase.controller.ts      # REST CRUD / read / update / delete
-│   ├── config/
-│   │   └── supabase.config.ts      # registerAs: SUPABASE_URL / SUPABASE_KEY
+├── telegram/                        # Telegram config & types
 │   ├── interfaces/
-│   │   └── supabase.interface.ts   # CreateRecordDto / UpdateRecordDto
+│   │   └── telegram.interface.ts     # TelegramMessage, TelegramUpdate, SendMessageOptions, TelegramResponse, …
+│   └── config/
+│       └── telegram.config.ts        # load: botToken / webhookUrl / webhookSecret / timeout
+│
+├── supabase/                        # TypeORM entities + Supabase controller legacy
+│   ├── entities/
+│   │   ├── scraped-data.entity.ts      # scraped_data (unique: source_id + data_hash)
+│   │   ├── scraping-source.entity.ts   # scraping_sources
+│   │   ├── user.entity.ts              # users
+│   │   ├── user-session.entity.ts      # user_sessions (revocable refresh-token sessions)
+│   │   ├── user-auth-provider.entity.ts
+│   │   ├── telegram-bot.entity.ts
+│   │   ├── telegram-chat.entity.ts
+│   │   ├── telegram-update.entity.ts
+│   │   └── feature-config.entity.ts
 │   ├── routines/
-│   │   └── supabase-routine.service.ts  # Stub: placeholder for periodic Supabase work
-│   └── entities/
-│       ├── scraped-data.entity.ts      # scraped_data (unique: source_id + data_hash)
-│       ├── scraping-source.entity.ts   # scraping_sources
-│       ├── user.entity.ts              # users
-│       ├── user-session.entity.ts      # user_sessions (revocable refresh-token sessions)
-│       ├── user-auth-provider.entity.ts
-│       ├── telegram-bot.entity.ts
-│       ├── telegram-chat.entity.ts
-│       ├── telegram-update.entity.ts
-│       └── feature-config.entity.ts
+│   │   └── supabase-routine.service.ts  # (moved to src/lib/services/)
+│   └── config/
+│       └── supabase.config.ts        # registerAs: SUPABASE_URL / SUPABASE_KEY
 │
-└── web/                            # React frontend (Vite)
+├── auth/
+│   ├── auth.service.ts               # AuthService (plain class; JWT sign via Elysia jwt plugin)
+│   ├── strategies/
+│   │   └── jwt.strategy.ts           # JwtPayload interface only (Passport strategy removed)
+│   └── (controller/module removed)   # Routes are defined directly in server.ts
+│
+└── web/                              # React frontend (Vite) — independent workspace
     └── src/
-        └── App.tsx                 # Loads PortfolioBlock component
+        ├── App.tsx
         └── components/
             └── PortfolioBlock/PortfolioBlock.tsx  # Fetches /api/v1/openrouter/completion; renders Markdown
 ```
@@ -145,13 +100,13 @@ src/
 Scraping Targets (Playwright)
   FinancialJuice, YahooFinance, CoinmarketCap
         ↓ [ScraperRoutineService ~ every 20 s]
-MemoryKeyStore (in-process)
+MemoryKeyStore (in-process, Elysia derive store)
   financialjuice / yahoofinance / coinmarketcap
         ↓ [OpenrouterRoutineService ~ when all 3 present]
 OpenRouter AI (FinancialAgentService)  →  Markdown analysis
         ↓
 ScrapedDataEntity { source_id: openrouter UUID, status: 'result' }
-  saved to PostgreSQL via TypeORM
+  saved to PostgreSQL via TypeORM (AppDataSource)
         ↓
 GET /api/v1/openrouter/completion  →  latest + previous completions
   ↓  consumed by React frontend (PortfolioBlock)
@@ -163,20 +118,20 @@ GET /api/v1/scraper/financialjuice | yahoofinance | coinmarketcap
 ## Key Conventions
 
 ### Configuration
-- All env vars are read eagerly into `process.env` by `CommonConfigService` at construction time — thread-safe (immutable map).
-- Feature modules load their own sub-tree via `@nestjs/config` `registerAs` / factory calls (`openRouterConfig`, `telegramConfig`, etc.).
-- Routine global switch: `ROUTINE_ENABLED=true|false` (default `false`).  
+- All env vars are read via `Bun.env` through `src/config/env.ts` helpers (`env.string`, `env.number`, `env.bool`).
+- No `CommonConfigService` — thread-safety achieved by eager `Bun.env` reads at module scope.
+- Routine global switch: `ROUTINE_ENABLED=true|false` (default `false`).
   Execution mode: `ROUTINE_EXECUTION_MODE=wait|skip|overlap` (default `wait`).
 
 ### Routing
+- All routes are defined directly in `src/server.ts`. No controllers or modules.
 - Routes live under `/api/v1/{module}`.
-- OpenAuth is enforced globally via `JwtAuthGuard` + `RolesGuard` registered as `APP_GUARD`.
-- Bypass auth with `@Public()`; require roles with `@Roles('admin', 'moderator')`.
-- Inject app-wide constants via `@Inject(APP_CONSTANTS)`.
+- JWT enforcement is implicit: routes that call `jwt` from context are protected; others are open.
+- Service dependencies are injected via `derive()` into Elysia's request context.
 
 ### Routine System
-- `RoutineService.startRoutine(name, fn, intervalMs)` sets up per-routine interval timers.
-- `OnModuleInit` implementations decide whether to register (checks `isEnabled()`).
+- `RoutineService.startRoutine(name, fn, intervalMs)` sets up per-routine interval timers via `setInterval`/`setTimeout`.
+- `start()` method on each routine service checks `isEnabled()` before registering.
 - `'wait'` mode (default) uses recursive `setTimeout` — next run scheduled only after current finishes.
 
 ### WebSocket / Streaming
@@ -184,10 +139,15 @@ GET /api/v1/scraper/financialjuice | yahoofinance | coinmarketcap
 
 ### State
 - `MemoryKeyStore` is the only in-memory store for scraped content — no Redis.
-- `scrapedContentStore.set(key, value)` called at end of each scraper/LLM routine; read by controllers.
+- `scrapedContentStore.set(key, value)` called at end of each scraper/LLM routine; read by controllers via `derive()` store.
+
+### JWT Auth
+- JWT sign/verify is performed via Elysia's `app.jwt.sign()` (from `@elysiajs/jwt` plugin).
+- Refresh tokens are stored in HTTP-only cookies; raw tokens are hashed with bcrypt before DB persistence.
+- Sessions track `user_agent`, `ip_address`, `expires_at`, and `revoked_at`.
 
 ### Naming
-- Sequelise: `snake_case` DB columns → `camelCase` entity properties.
+- snake_case DB columns → camelCase entity properties.
 - Services: `{Domain}Service`, Routines: `{domain}-routine.service.ts`.
 - TypeORM entities under `src/supabase/entities/`; table names configured explicitly.
 
@@ -230,34 +190,30 @@ DATABASE_URL=postgresql://postgres:yourpassword@yourdomain.com:5432/postgres
 
 ## Commands
 
-> All commands are run with **bun** (npm has been removed).
+> All commands are run with **bun**. `npm` has been removed. Server entry point is `src/server.ts`.
 
 | Task | Command |
 |---|---|
-| Dev (NestJS + Vite) | `bun run dev` |
-| Dev (NestJS only) | `bun run dev` |
-| Build all | `bun run build` |
+| Dev (server) | `bun run dev` |
+| Dev (Vite frontend) | `bun run web:dev` |
 | Type-check | `bun run check` |
 | Lint | `bun run lint` |
 | Format | `bun run format` |
 | Unit / Integration tests | `bun run test` |
 | Unit tests (watch) | `bun run test:watch` |
 | Coverage | `bun run test:cov` |
-| Frontend dev | `bun run web:dev` |
 | Frontend build | `bun run web:build` |
 | Frontend preview | `bun run web:preview` |
 | Install deps | `bun install` |
 
-> NestJS serves on **http://localhost:3000** (via `bunx tsx src/main.ts`).  
-> Vite dev server runs on **http://localhost:3001**.  
+> Elysia server listens on **http://localhost:3000**.
 > CORS origin allows `localhost:5173`, `localhost:3001`, `localhost:3000`.
 
 ---
 
 ## Testing
 
-- **Unit / Integration:** bun test (Bun-native test runner).  
-  Test files: `**/*.spec.ts` under `src/`.
+- **Unit / Integration:** bun test (Bun-native test runner). Test files: `**/*.spec.ts` under `src/`.
 - **E2E:** Playwright (configured in `playwright.config.ts`). CI runs on Ubuntu via `.github/workflows/playwright.yml`.
 - Run all tests: `bun run test`. Coverage: `bun run test:cov`.
 - Format: `bun run format`.
@@ -266,10 +222,11 @@ DATABASE_URL=postgresql://postgres:yourpassword@yourdomain.com:5432/postgres
 
 ## Design Patterns & Notable Decisions
 
-1. **Global Modules** — All feature modules (`ScraperModule`, `OpenRouterModule`, `TelegramModule`, `SupabaseModule`) and `CommonModule` are `@Global()`; root `AppModule` imports each once.
-2. **Thread-Safe Config** — `CommonConfigService` snapshots `process.env` at construction; all async config reads go through it.
-3. **Memory-Store Dedup** — `MemoryKeyStore.getOrSet` deduplicates async factory calls using a `pendingPromises` map.
-4. **Scraper Concurrency** — `scrapeMultiple` implements a lightweight semaphore (worker pool, default = CPU cores / 2) with exponential backoff retry.
-5. **TypeORM + Supabase Client** — Two independent data paths coexist: generic CRUD via the Supabase JS client for Supabase-specific tables, and TypeORM for PostgreSQL entities (users, sessions, scraped data…).
-6. **Routine Execution Modes** — `wait` (recursive setTimeout, default), `skip` (drop execution if still running), `overlap` (fire and forget).
-7. **JWT Refresh Tokens** — Refresh tokens are hashed with bcrypt before storage; auto-rotation on use; sessions track `user_agent`, `ip_address`, `expires_at`, and `revoked_at`.
+1. **No DI Container** — Elysia does not provide dependency injection. All services are plain TypeScript classes instantiated once at the top of `src/server.ts`. Dependencies flowing into route handlers come from Elysia's `derive()` and closure capture.
+2. **Elysia derive store** — Shared service instances (`authService`, `scraperService`, etc.) are injected into every route handler's context via `.derive()` so they are accessible as `store.authService`, `store.scraperService`, etc.
+3. **Config via Bun.env** — `src/config/env.ts` is the single env-var reader. No NestJS `ConfigModule` or eager-snapshot cache.
+4. **Manual TypeORM bootstrap** — `AppDataSource` is a plain `new DataSource({...})` in `src/lib/db.ts`, initialized explicitly at server start with `.initialize()`. No NestJS `TypeOrmModule`.
+5. **Routine Service** — `RoutineService` is a plain class with `startRoutine(name, fn, ms)` returning a number (Bun timer ID, not `NodeJS.Timeout`). 'wait' mode uses recursive `setTimeout`.
+6. **JWT via Elysia plugin** — `@elysiajs/jwt` plugin handles sign/verify. Auth route handlers call `(app.jwt as any).sign(payload, options)` directly. No NestJS `JwtModule` or `JwtService`.
+7. **TypeORM entities** — Entities under `src/supabase/entities/` use `@Column({ type: '...' })` with explicit column types to satisfy `tsc` without `emitDecoratorMetadata`. `experimentalDecorators: true` is set for TypeORM decorator support; `reflect-metadata` is required only by TypeORM.
+8. **Bun module convention** — `tsconfig.json` uses `"module": "esnext"` + `"moduleResolution": "Bundler"` + `"allowImportingTsExtensions": true`. Internal imports use explicit `.ts` file extensions (required by Bundler resolution).

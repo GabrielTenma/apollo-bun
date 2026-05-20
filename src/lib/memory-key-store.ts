@@ -6,7 +6,7 @@
  * Thread-safe for Node.js single-threaded environment with async operation safety.
  *
  * @example
- * import { MemoryKeyStore } from '../lib/memory-key-store';
+ * import { MemoryKeyStore } from '../lib/memory-key-store.ts';
  *
  * const store = new MemoryKeyStore();
  * store.set('key', 'value', 60000); // 60 seconds TTL

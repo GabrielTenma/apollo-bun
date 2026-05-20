@@ -1,8 +1,8 @@
-import { RoutineService } from '../routine.service';
-import { FinancialAgentService } from './financial-agent.service';
+import { RoutineService } from '../routine.service.ts';
+import { FinancialAgentService } from './financial-agent.service.ts';
 import { Repository } from 'typeorm';
-import { ScrapedDataEntity } from '../../supabase/entities/scraped-data.entity';
-import { MemoryKeyStore } from '../memory-key-store';
+import { ScrapedDataEntity } from '../../supabase/entities/scraped-data.entity.ts';
+import { MemoryKeyStore } from '../memory-key-store.ts';
 import * as crypto from 'crypto';
 
 export class OpenrouterRoutineService {

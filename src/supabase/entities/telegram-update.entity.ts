@@ -6,7 +6,7 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
-import { TelegramBotEntity } from './telegram-bot.entity';
+import { TelegramBotEntity } from './telegram-bot.entity.ts';
 
 @Entity({ name: 'telegram_updates' })
 @Unique(['bot_id', 'update_id'])

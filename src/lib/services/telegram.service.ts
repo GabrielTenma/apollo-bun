@@ -4,8 +4,8 @@ import {
   TelegramUpdate,
   TelegramResponse,
   TelegramUser,
-} from './telegram.interface.ts';
-import { env } from '../config/env.ts';
+} from '../../telegram/interfaces/telegram.interface.ts';
+import { env } from '../../config/env.ts';
 
 export class TelegramService {
   botToken: string;

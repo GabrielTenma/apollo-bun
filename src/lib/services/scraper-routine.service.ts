@@ -1,12 +1,12 @@
 import * as crypto from 'crypto';
-import { RoutineService } from '../routine.service';
-import { CoinmarketCapTarget } from '../../scraper/target/coinmarketcap.target';
-import { YahooFinanceTarget } from '../../scraper/target/yahoofinance.target';
-import { FinancialJuiceTarget } from '../../scraper/target/financialjuice.target';
-import { ScraperService } from './scraper.service';
-import { MemoryKeyStore } from '../memory-key-store';
+import { RoutineService } from '../routine.service.ts';
+import { CoinmarketCapTarget } from '../../scraper/target/coinmarketcap.target.ts';
+import { YahooFinanceTarget } from '../../scraper/target/yahoofinance.target.ts';
+import { FinancialJuiceTarget } from '../../scraper/target/financialjuice.target.ts';
+import { ScraperService } from './scraper.service.ts';
+import { MemoryKeyStore } from '../memory-key-store.ts';
 import { Repository } from 'typeorm';
-import { ScrapedDataEntity } from '../../supabase/entities/scraped-data.entity';
+import { ScrapedDataEntity } from '../../supabase/entities/scraped-data.entity.ts';
 
 export class ScraperRoutineService {
   constructor(

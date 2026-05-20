@@ -2,8 +2,8 @@ import {
   ChatCompletionOptions,
   ChatCompletionResponse,
   OpenRouterModel,
-} from './openrouter.interface.ts';
-import { env } from './../../config/env.ts';
+} from '../../openrouter/interfaces/openrouter.interface.ts';
+import { env } from '../../config/env.ts';
 
 export class OpenRouterService {
   apiKey: string;

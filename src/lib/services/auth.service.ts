@@ -1,9 +1,20 @@
 import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { env } from '../../config/index.ts';
 import { UserEntity } from '../../supabase/entities/user.entity.ts';
 import { UserSessionEntity } from '../../supabase/entities/user-session.entity.ts';
 import { JwtPayload } from '../../auth/strategies/jwt.strategy.ts';
+
+/** Parse an ISO-8601 duration string (e.g. "60m", "7d") → seconds */
+function durationToSeconds(duration: string): number {
+  const match = duration.match(/^(\d+)([smhd])$/);
+  if (!match) return 0;
+  const value = Number.parseInt(match[1], 10);
+  const unit = match[2];
+  const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
+  return value * (multipliers[unit] ?? 1);
+}
 
 export interface UserRoles {
   id: string;
@@ -41,12 +52,28 @@ export class AuthService {
     await this.userRepository.save(user);
   }
 
+  buildAccessTokenPayload(user: UserRoles): JwtPayload {
+    return {
+      sub: user.id,
+      email: user.email,
+      roles: user.roles,
+    };
+  }
+
+  buildRefreshTokenPayload(user: UserRoles): JwtPayload {
+    return {
+      sub: user.id,
+      email: user.email,
+      roles: [],
+    };
+  }
+
   async login(
     email: string,
     password: string,
     userAgent?: string,
     ipAddress?: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ accessTokenPayload: JwtPayload; refreshTokenPayload: JwtPayload; rawRefreshToken: string }> {
     const user = await this.userRepository.findOne({
       where: { email, is_active: true },
     });
@@ -62,10 +89,11 @@ export class AuthService {
       roles: user.roles,
     };
 
-    const accessToken = this.generateAccessToken(userRoles);
-    const refreshToken = this.generateRefreshToken(userRoles);
+    const accessTokenPayload = this.buildAccessTokenPayload(userRoles);
+    const refreshTokenPayload = this.buildRefreshTokenPayload(userRoles);
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    const rawRefreshToken = crypto.randomUUID();
+    const refreshTokenHash = await bcrypt.hash(rawRefreshToken, 10);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const session = this.sessionRepository.create({
       user_id: user.id,
@@ -75,45 +103,14 @@ export class AuthService {
       expires_at: expiresAt,
     });
     await this.sessionRepository.save(session);
-    return { accessToken, refreshToken };
-  }
-
-  generateAccessToken(user: UserRoles, expiresIn?: string | null): string {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      roles: user.roles,
-    };
-    const options: { expiresIn?: string | number } = {};
-    if (expiresIn !== null && expiresIn !== undefined) {
-      options.expiresIn = expiresIn;
-    } else if (expiresIn === undefined) {
-      const defaultExpiration = env.string('JWT_ACCESS_EXPIRATION', '60m');
-      options.expiresIn = defaultExpiration;
-    }
-    // Caller passes JWT plugin's sign directly — handled in route handler
-    throw new Error(
-      'generateAccessToken: use route-level app.jwt.sign(payload, options) instead',
-    );
-  }
-
-  generateRefreshToken(user: UserRoles, expiresIn?: string): string {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      roles: [],
-    };
-    const refreshExpiration = expiresIn || env.string('JWT_REFRESH_EXPIRATION', '7d');
-    throw new Error(
-      'generateRefreshToken: use route-level app.jwt.sign(payload, { expiresIn }) instead',
-    );
+    return { accessTokenPayload, refreshTokenPayload, rawRefreshToken };
   }
 
   async refreshTokens(
     refreshToken: string,
     userAgent?: string,
     ipAddress?: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ accessTokenPayload: JwtPayload; refreshTokenPayload: JwtPayload; rawRefreshToken: string }> {
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
     const session = await this.sessionRepository.findOne({
       where: { refresh_token_hash: refreshTokenHash, revoked_at: null },
@@ -135,9 +132,10 @@ export class AuthService {
       email: user.email,
       roles: user.roles,
     };
-    const newAccessToken = this.generateAccessToken(userRoles);
-    const newRefreshToken = this.generateRefreshToken(userRoles);
-    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
+    const newAccessTokenPayload = this.buildAccessTokenPayload(userRoles);
+    const newRefreshTokenPayload = this.buildRefreshTokenPayload(userRoles);
+    const newRawRefreshToken = crypto.randomUUID();
+    const newRefreshTokenHash = await bcrypt.hash(newRawRefreshToken, 10);
     const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const newSession = this.sessionRepository.create({
       user_id: user.id,
@@ -147,6 +145,6 @@ export class AuthService {
       expires_at: newExpiresAt,
     });
     await this.sessionRepository.save(newSession);
-    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    return { accessTokenPayload: newAccessTokenPayload, refreshTokenPayload: newRefreshTokenPayload, rawRefreshToken: newRawRefreshToken };
   }
 }

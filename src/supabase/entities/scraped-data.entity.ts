@@ -6,7 +6,7 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
-import { ScrapingSourceEntity } from './scraping-source.entity';
+import { ScrapingSourceEntity } from './scraping-source.entity.ts';
 
 @Entity({ name: 'scraped_data' })
 @Unique(['source_id', 'data_hash'])

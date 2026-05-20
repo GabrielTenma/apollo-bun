@@ -1,11 +1,11 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
-import { env } from '../config/env.ts';
+import { env } from '../../config/env.ts';
 import {
   ScrapeOptions,
   ScrapeResult,
   ExtractConfig,
   ElementSelector,
-} from './scraper.interface.ts';
+} from '../../scraper/interfaces/scraper.interface.ts';
 import * as os from 'node:os';
 
 export class ScraperService {
