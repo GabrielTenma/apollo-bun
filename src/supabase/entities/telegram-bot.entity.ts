@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { TelegramChatEntity } from './telegram-chat.entity';
-import { TelegramUpdateEntity } from './telegram-update.entity';
+import { TelegramChatEntity } from './telegram-chat.entity.ts';
+import { TelegramUpdateEntity } from './telegram-update.entity.ts';
 
 @Entity({ name: 'telegram_bots' })
 export class TelegramBotEntity {
