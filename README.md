@@ -10,6 +10,7 @@
     ·
     <a href="https://github.com/GabrielTenma/apollo-bun/issues">Request Feature</a>
   </p>
+  <hr>
 </div>
 
 ![Branches](https://www.shieldcn.dev/github/branches/GabrielTenma/apollo-bun.svg?variant=ghost&size=xs)
@@ -31,8 +32,6 @@ Basically this app just collect data from trusted platform who updates related e
 Errors and structured events are logged via [evlog](https://evlog.dev) — one wide event per failure with full context, no scattered lines.
 
 For the future plan focusing integrate to stackyrd pkg which `diameter-tscd` project, frontend and manageable web-content.
-
-To see a `sequence diagram` complete, click <a href="https://sequencediagram.org/index.html#initialData=C4S2BsFMAIEMAcD25yIFBoMbhJAdsALQB8CyqAXAE6QCOArpAM7AXQD0CI7AbgIztM5SJmCIqaMikQl4VRDxAATSFWgBBCkJQjg0JbGCxoIAqryGQiC+GgAjGrADWpgObQ8kAO5NoAMmhQTCdVSSRpWXlFFTUAIS1hUX1DY3BDZj1PH2gAM3oUaBZxAE8w8hliRHh8eXpgVTYaBgy2YCpYPCY0+uhtKFFIJWSjNCqaxDrVEilKaBomJE7IVvbO7sHh2DQ8RB6FVThw2cxYTAALN0CzmHn84AxsXAIAHkIZxGpmRaZluchYAx2KD6RCYegAW3w922uxg+zU70aE1AnmgqCqhWqmBAOVwQ1AkLKERITFBIFg4DYPzwQx2oFxJ1A1n8vWs9QIQA">here</a>.
 
 ## Getting Started
 
@@ -89,6 +88,8 @@ Exposed port: **3000**. Health check: `GET /health` → `{"status":"ok"}`.
 
 ## Preview
 ![Web](.github/assets/preview.png)
+
+For architecture details, see [DESIGN.md](DESIGN.md).
 
 ## License
 Use Apache 2. See `LICENSE` for deal your free time.
