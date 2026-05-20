@@ -1,11 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { ScraperService } from '../scraper.service';
-import { ScrapeOptions } from '../interfaces/scraper.interface';
+import { ScraperService } from '../../lib/services/scraper.service.ts';
+import { ScrapeOptions } from '../interfaces/scraper.interface.ts';
 import * as cheerio from 'cheerio';
 
-/**
- * FinancialJuice - Interface for structured data NewsItem
- */
 export interface NewsItem {
   id: string;
   title: string;
@@ -14,12 +10,8 @@ export interface NewsItem {
   tags: string[];
 }
 
-/**
- * Scrapes financialjuice web latest news
- */
-@Injectable()
 export class FinancialJuiceTarget {
-  constructor(private readonly scraperService: ScraperService) {}
+  constructor(public scraperService: ScraperService) {}
 
   getOptions(): ScrapeOptions {
     return {
@@ -33,34 +25,17 @@ export class FinancialJuiceTarget {
     };
   }
 
-  /**
-   * Collect FinancialJuice latest news
-   * until dynamic element #mainFeed shows.
-   */
   async scrapeLatestNews(): Promise<NewsItem[]> {
-    // Call ScraperService (return assume { url, content: string })
     const result = await this.scraperService.scrape(this.getOptions());
-
-    if (!result.content) {
-      throw new Error('Scraping gagal: konten HTML tidak tersedia');
-    }
-
-    // Parse HTML with Cheerio
-    const news = this.parseNewsItems(result.content);
-    return news;
+    if (!result.content) throw new Error('Scraping failed: HTML content unavailable');
+    return this.parseNewsItems(result.content);
   }
 
-  /**
-   * Parse HTML and extract item news dari #mainFeed
-   */
   parseNewsItems(html: string): NewsItem[] {
     const $ = cheerio.load(html);
     const items: NewsItem[] = [];
-
     $('#mainFeed .infinite-item.headline-item').each((_, element) => {
       const $item = $(element);
-
-      // Lewati item tanpa judul (biasanya iklan / placeholder)
       const anchor = $item.find('p.headline-title a');
       let title: string;
       let link: string;
@@ -68,32 +43,24 @@ export class FinancialJuiceTarget {
       if (anchor.length > 0) {
         title = anchor.text().trim();
         const href = anchor.attr('href') || '';
-        link = href.startsWith('http')
-          ? href
-          : `https://www.financialjuice.com${href}`;
+        link = href.startsWith('http') ? href : `https://www.financialjuice.com${href}`;
       } else {
         const span = $item.find('span.headline-title-nolink');
         title = span.text().trim();
         link = '';
       }
 
-      if (!title) return; // ignore non-news content
-
+      if (!title) return;
       const time = $item.find('p.time').text().trim();
-
       const tags: string[] = [];
       $item.find('span.news-label').each((_, tagEl) => {
         const tagText = $(tagEl).text().trim();
         if (tagText) tags.push(tagText);
       });
-
       const id = $item.attr('data-headlineid') || '';
-
-      if (id == '0') return; // ignore promotial content
-
+      if (id === '0') return;
       items.push({ id, title, link, time, tags });
     });
-
     return items;
   }
 }

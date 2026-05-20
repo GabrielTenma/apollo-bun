@@ -5,7 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { UserEntity } from './user.entity';
+import { UserEntity } from './user.entity.ts';
 
 @Entity({ name: 'feature_configs' })
 export class FeatureConfigEntity {

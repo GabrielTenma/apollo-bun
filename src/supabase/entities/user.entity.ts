@@ -1,8 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { UserAuthProviderEntity } from './user-auth-provider.entity';
-import { UserSessionEntity } from './user-session.entity';
-import { TelegramChatEntity } from './telegram-chat.entity';
-import { FeatureConfigEntity } from './feature-config.entity';
+import { UserAuthProviderEntity } from './user-auth-provider.entity.ts';
+import { UserSessionEntity } from './user-session.entity.ts';
+import { TelegramChatEntity } from './telegram-chat.entity.ts';
+import { FeatureConfigEntity } from './feature-config.entity.ts';
 
 @Entity({ name: 'users' })
 export class UserEntity {

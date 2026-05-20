@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { ScrapedDataEntity } from './scraped-data.entity';
+import { ScrapedDataEntity } from './scraped-data.entity.ts';
 
 @Entity({ name: 'scraping_sources' })
 export class ScrapingSourceEntity {

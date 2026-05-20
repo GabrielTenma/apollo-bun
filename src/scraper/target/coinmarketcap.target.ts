@@ -1,11 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { ScraperService } from '../scraper.service';
-import { ScrapeOptions } from '../interfaces/scraper.interface';
+import { ScraperService } from '../../lib/services/scraper.service.ts';
+import { ScrapeOptions } from '../interfaces/scraper.interface.ts';
 import * as cheerio from 'cheerio';
 
-/**
- * CoinmarketCap - Interface for structured data CoinData
- */
 export interface CoinData {
   rank: string;
   name: string;
@@ -19,14 +15,9 @@ export interface CoinData {
   circulatingSupply: string;
 }
 
-/**
- * Scrapes coinmarketcap web latest price update
- */
-@Injectable()
 export class CoinmarketCapTarget {
-  constructor(private readonly scraperService: ScraperService) {}
+  constructor(public scraperService: ScraperService) {}
 
-  // Options configuration
   getOptions(): ScrapeOptions {
     return {
       url: 'https://coinmarketcap.com/',
@@ -39,32 +30,18 @@ export class CoinmarketCapTarget {
     };
   }
 
-  /**
-   * Collect CoinmarketCap latest price
-   * until dynamic element cmc-table shows.
-   */
   async scrapeLatestPrice(): Promise<CoinData[]> {
-    // Call ScraperService (return assume { url, content: string })
     const result = await this.scraperService.scrape(this.getOptions());
-
-    if (!result.content) {
-      throw new Error('Scraping gagal: konten HTML tidak tersedia');
-    }
-
-    // Parse HTML with Cheerio
-    const priceList = this.parsePriceList(result.content);
-    return priceList;
+    if (!result.content) throw new Error('Scraping failed: HTML content unavailable');
+    return this.parsePriceList(result.content);
   }
 
   parsePriceList(html: string): CoinData[] {
     const $ = cheerio.load(html);
     const coins: CoinData[] = [];
-
     $('table.cmc-table tbody tr').each((_, row) => {
       const $row = $(row);
       const cells = $row.find('td');
-
-      // Pastikan baris cukup panjang (hindari baris kosong / iklan)
       if (cells.length < 10) return;
 
       const rank = $(cells[1]).text().trim();
@@ -79,22 +56,9 @@ export class CoinmarketCapTarget {
       const circulatingSupply = $(cells[9]).text().trim();
 
       if (name) {
-        // Hanya tambahkan jika ada nama (menyaring baris iklan)
-        coins.push({
-          rank,
-          name,
-          symbol,
-          price,
-          change1h,
-          change24h,
-          change7d,
-          marketCap,
-          volume24h,
-          circulatingSupply,
-        });
+        coins.push({ rank, name, symbol, price, change1h, change24h, change7d, marketCap, volume24h, circulatingSupply });
       }
     });
-
     return coins;
   }
 }

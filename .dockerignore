@@ -1,0 +1,38 @@
+# Git
+.git
+.github/**
+.gitattributes
+.gitignore
+
+# Dependencies
+node_modules/
+
+# Secrets
+.env*
+!.env.example
+
+# Bun
+bunfig.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript build output not needed in image
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+
+# Frontend local dev
+src/web/dist/
+src/web/node_modules/
+
+# Test reports / coverage
+coverage/
+test-results/

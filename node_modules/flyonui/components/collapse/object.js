@@ -1,1 +1,0 @@
-export default {".collapse:not(td):not(tr):not(colgroup)":{"visibility":"visible"}};
