@@ -1,8 +1,9 @@
 // src/server.ts — single entry point replaces main.ts + all NestJS modules
 import { Elysia } from 'elysia';
-import { jwt } from '@elysiajs/jwt';
 import { cors } from '@elysiajs/cors';
 import { cookie } from '@elysiajs/cookie';
+import { jwt } from '@elysiajs/jwt';
+import { SignJWT } from 'jose';
 import { env } from './config/env.ts';
 
 import { AppDataSource } from './lib/db.ts';
@@ -58,13 +59,6 @@ const authService = new AuthService(userRepo, sessionRepo);
 const financialJuiceTarget = new FinancialJuiceTarget(scraperService);
 const yahooFinanceTarget = new YahooFinanceTarget(scraperService);
 const coinMarketCapTarget = new CoinmarketCapTarget(scraperService);
-
-// j Sign helper — Elysia jwt plugin is available after .use(jwt(...))
-const signToken = (
-  payload: { sub: string; email: string; roles: string[] },
-  expiresIn: string,
-) => (app.jwt as any).sign(payload, { expiresIn });
-
 // ─── Elysia app ────────────────────────────────────────────────
 const app = new Elysia()
   .use(cors({
@@ -102,11 +96,18 @@ const app = new Elysia()
     '/api/v1/auth/login',
     async ({ body, set, setCookie }) => {
       try {
+        const email = (body as any)?.email;
+        const password = (body as any)?.password;
+        if (!email || !password) {
+          set.status = 400;
+          return { success: false, message: 'Email and password are required' };
+        }
         const { accessTokenPayload, refreshTokenPayload, rawRefreshToken } =
           await authService.login((body as any).email, (body as any).password);
 
-        const accessToken = signToken(accessTokenPayload, env.string('JWT_ACCESS_EXPIRATION', '1d'));
-        const refreshToken = signToken(refreshTokenPayload, env.string('JWT_REFRESH_EXPIRATION', '7d'));
+        const _jwtSecret = new TextEncoder().encode(env.string('JWT_SECRET') ?? '');
+        const accessToken = await new SignJWT(accessTokenPayload).setProtectedHeader({ alg: 'HS256' }).setExpirationTime(env.string('JWT_ACCESS_EXPIRATION', '1d')).sign(_jwtSecret);
+        const refreshToken = await new SignJWT(refreshTokenPayload).setProtectedHeader({ alg: 'HS256' }).setExpirationTime(env.string('JWT_REFRESH_EXPIRATION', '7d')).sign(_jwtSecret);
 
         setCookie('refresh_token', rawRefreshToken, {
           httpOnly: true,
@@ -125,7 +126,11 @@ const app = new Elysia()
     '/api/v1/auth/refresh',
     async ({ cookie, set, setCookie }) => {
       try {
-        const refreshToken = cookie.refresh_token;
+        // Elysia v1 cookie derives { value: string } wrapper objects
+        const rtCookie = (cookie as any)?.['refresh_token'];
+        const refreshToken = typeof rtCookie === 'string'
+          ? rtCookie
+          : rtCookie?.value;
         if (!refreshToken) {
           set.status = 401;
           return { success: false, message: 'No refresh token' };
@@ -133,8 +138,9 @@ const app = new Elysia()
         const { accessTokenPayload, refreshTokenPayload, rawRefreshToken } =
           await authService.refreshTokens(refreshToken);
 
-        const accessToken = signToken(accessTokenPayload, env.string('JWT_ACCESS_EXPIRATION', '1d'));
-        const refreshTokenSigned = signToken(refreshTokenPayload, env.string('JWT_REFRESH_EXPIRATION', '7d'));
+        const _jwtSecret = new TextEncoder().encode(env.string('JWT_SECRET') ?? '');
+        const accessToken = await new SignJWT(accessTokenPayload).setProtectedHeader({ alg: 'HS256' }).setExpirationTime(env.string('JWT_ACCESS_EXPIRATION', '1d')).sign(_jwtSecret);
+        const refreshTokenSigned = await new SignJWT(refreshTokenPayload).setProtectedHeader({ alg: 'HS256' }).setExpirationTime(env.string('JWT_REFRESH_EXPIRATION', '7d')).sign(_jwtSecret);
 
         setCookie('refresh_token', rawRefreshToken, {
           httpOnly: true,
@@ -149,14 +155,20 @@ const app = new Elysia()
     },
   )
   .get('/api/v1/auth/profile', async ({ jwt }) => {
-    const user = (jwt as any).payload as { sub: string; email: string; roles: string[] };
-    return { success: true, data: user };
+    const payload = (jwt as any).payload as { sub: string; email: string; roles: string[] } | undefined;
+    if (!payload?.sub) {
+      return { success: false, message: 'Unauthorized' };
+    }
+    return { success: true, data: payload };
   })
 
   // ─── scraper routes ─────────────────────────────────────────
   .post('/api/v1/scraper/scrape', async ({ body }) => {
     const result = await scraperService.scrape((body as any).options ?? {});
-    return { success: true, data: result };
+    const safe = typeof result === 'object' && result !== null
+      ? { ...result, content: result.content?.replace(/\r\n?/g, '\n') ?? '' }
+      : result;
+    return { success: true, data: safe };
   })
   .post('/api/v1/scraper/scrape-multiple', async ({ body }) => {
     const result = await scraperService.scrapeMultiple((body as any).options ?? {});
@@ -216,24 +228,44 @@ const app = new Elysia()
 
   // ─── telegram routes ─────────────────────────────────────────
   .post('/api/v1/telegram/webhook', async ({ body }) => {
-    await telegramService.sendMessage({ chat_id: (body as any).chatId, text: (body as any).text || '' });
-    return { success: true };
+    try {
+      await telegramService.sendMessage({ chat_id: (body as any).chatId, text: (body as any).text || '' });
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e.message };
+    }
   })
   .post('/api/v1/telegram/send-message', async ({ body }) => {
-    const result = await telegramService.sendMessage({ chat_id: (body as any).chatId, text: (body as any).text });
-    return { success: true, data: result };
+    try {
+      const result = await telegramService.sendMessage({ chat_id: (body as any).chatId, text: (body as any).text });
+      return { success: true, data: result };
+    } catch (e: any) {
+      return { success: false, message: e.message };
+    }
   })
   .post('/api/v1/telegram/send-text', async ({ body }) => {
-    await telegramService.sendText((body as any).chatId, (body as any).text, (body as any).parseMode);
-    return { success: true };
+    try {
+      await telegramService.sendText((body as any).chatId, (body as any).text, (body as any).parseMode);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e.message };
+    }
   })
   .post('/api/v1/telegram/set-webhook', async ({ body }) => {
-    await telegramService.setWebhook((body as any).url, (body as any).secret);
-    return { success: true };
+    try {
+      await telegramService.setWebhook((body as any).url, (body as any).secret);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e.message };
+    }
   })
   .get('/api/v1/telegram/bot-info', async () => {
-    const info = await telegramService.getMe();
-    return { success: true, data: info };
+    try {
+      const info = await telegramService.getMe();
+      return { success: true, data: info };
+    } catch (e: any) {
+      return { success: false, message: e.message };
+    }
   })
   .get('/api/v1/telegram/health', () => ({ status: 'ok', service: 'telegram' }))
 

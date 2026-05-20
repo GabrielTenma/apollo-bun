@@ -9,4 +9,5 @@ export interface JwtPayload {
   roles: string[];
   iat?: number;
   exp?: number;
+  [key: string]: unknown;
 }
