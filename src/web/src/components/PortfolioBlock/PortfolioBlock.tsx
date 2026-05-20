@@ -4,13 +4,13 @@ import Gfm from "remark-gfm";
 import StickyNavBar from "../NavigationBar/StickyNavBar";
 
 interface ContentItem {
-  name: string;
-  value: string;
+  latest: string;
+  previous: string;
 }
 
 interface CompletionApiResponse {
   success: boolean;
-  data: ContentItem[];
+  data: ContentItem;
 }
 
 const TABLE_CLS = "table table-xs table-pin-rows table-pin-cols";
@@ -81,13 +81,12 @@ export default function PortfolioBlock() {
         const response = await fetch(
           "http://localhost:3000/api/v1/openrouter/completion",
         );
+
         const json: CompletionApiResponse = await response.json();
 
-        if (json.success && Array.isArray(json.data)) {
-          for (const item of json.data) {
-            if (item.name === "latest") setLatest(item.value);
-            if (item.name === "previous") setPrevious(item.value);
-          }
+        if (json.success) {
+          setLatest(json.data.latest);
+          setPrevious(json.data.previous);
         }
 
         console.debug("Fetch OK:", json);
@@ -103,7 +102,7 @@ export default function PortfolioBlock() {
 
   return (
     <>
-      <StickyNavBar/>
+      <StickyNavBar />
       <div className="bg-base-100 py-8 sm:py-16 lg:py-10 z-auto">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="space-y-5">
@@ -123,7 +122,7 @@ export default function PortfolioBlock() {
                   {/* {loading
                     ? "Loading..."
                     : latest || "No latest completion available"} */}
-                    {latest || "No latest completion available"}
+                  {latest || "No latest completion available"}
                 </Markdown>
 
                 <hr className="border-base-content/20" />
