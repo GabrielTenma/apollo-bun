@@ -1,7 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from 'typeorm';
 import { ScrapedDataEntity } from './scraped-data.entity.ts';
 
 @Entity({ name: 'scraping_sources' })
+@Index('idx_scraping_source_type', ['source_type'])
+@Index('idx_scraping_source_active', ['is_active'])
 export class ScrapingSourceEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

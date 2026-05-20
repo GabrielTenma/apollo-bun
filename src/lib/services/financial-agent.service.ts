@@ -9,11 +9,16 @@ export class FinancialAgentService {
   constructor(public openRouterService: OpenRouterService) {}
 
   async queryChat(promptConfig: PromptConfig): Promise<string> {
-    const response = await this.openRouterService.chat(
-      this.getPrompt(promptConfig),
-      'openrouter/free',
-      'You are a helpful financial consultant assistant.',
-    );
+    const response = await Promise.race([
+      this.openRouterService.chat(
+        this.getPrompt(promptConfig),
+        'openrouter/free',
+        'You are a helpful financial consultant assistant.',
+      ),
+      new Promise<string>((_, reject) =>
+        setTimeout(() => reject(new Error('OpenRouter request timed out after 300 s')), 300_000),
+      ),
+    ]);
     console.log('Response:', response.length);
     return response;
   }

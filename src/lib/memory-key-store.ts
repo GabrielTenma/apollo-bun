@@ -23,8 +23,23 @@ export interface MemoryEntry<T = any> {
 export class MemoryKeyStore {
   private store: Map<string, MemoryEntry> = new Map();
   private pendingPromises: Map<string, Promise<any>> = new Map();
+  private maxEntries: number;
+
+  /**
+   * @param maxEntries — when the store grows to this size, the oldest
+   *   entry (by insertion order / LRU) is evicted before a new one is set.
+   *   Pass 0 (default) for no limit.
+   */
+  constructor(maxEntries: number = 0) {
+    this.maxEntries = maxEntries;
+  }
 
   set<T>(key: string, value: T, ttl?: number): void {
+    // Evict oldest entry if at capacity (LRU: first Map key inserted)
+    if (this.maxEntries > 0 && this.store.size >= this.maxEntries) {
+      const oldestKey = this.store.keys().next().value;
+      if (oldestKey !== undefined) this.store.delete(oldestKey);
+    }
     const entry: MemoryEntry<T> = {
       value,
       expiresAt: ttl ? Date.now() + ttl : undefined,
@@ -111,17 +126,18 @@ export class MemoryKeyStore {
     if (existing !== undefined) return existing;
     const pending = this.pendingPromises.get(key);
     if (pending) return pending;
-    const promise = (async () => {
+    this.pendingPromises.set(key, (async () => {
       try {
         const value = await factory();
         this.set(key, value, ttl);
         return value;
-      } finally {
+      } catch (e) {
+        // clean up immediately on failure so future callers aren't blocked
         this.pendingPromises.delete(key);
+        throw e;
       }
-    })();
-    this.pendingPromises.set(key, promise);
-    return promise;
+    })());
+    return this.pendingPromises.get(key)!;
   }
 
   getOrSetSync<T>(key: string, factory: () => T, ttl?: number): T {

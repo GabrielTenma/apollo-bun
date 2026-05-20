@@ -5,11 +5,33 @@ import {
 } from '../../openrouter/interfaces/openrouter.interface.ts';
 import { env } from '../../config/env.ts';
 
+interface CacheEntry {
+  result: ChatCompletionResponse;
+  expiresAt: number;
+}
+
 export class OpenRouterService {
   apiKey: string;
   baseUrl: string;
   defaultModel: string;
   timeout: number;
+  private cache = new Map<string, CacheEntry>();
+  private readonly CACHE_TTL = 60_000; // 60 s
+
+  private cacheKey(options: ChatCompletionOptions): string {
+    return `${options.model || this.defaultModel}:${JSON.stringify(options.messages)}`;
+  }
+
+  private getCached(key: string): ChatCompletionResponse | undefined {
+    const entry = this.cache.get(key);
+    if (entry && Date.now() < entry.expiresAt) return entry.result;
+    this.cache.delete(key);
+    return undefined;
+  }
+
+  private setCache(key: string, result: ChatCompletionResponse): void {
+    this.cache.set(key, { result, expiresAt: Date.now() + this.CACHE_TTL });
+  }
 
   constructor() {
     this.apiKey = env.string('OPENROUTER_API_KEY', '');
@@ -33,6 +55,11 @@ export class OpenRouterService {
   ): Promise<ChatCompletionResponse> {
     const startTime = Date.now();
     try {
+      // In-memory cache: same model + messages within 60 s → skip the API call
+      const key = this.cacheKey(options);
+      const cached = this.getCached(key);
+      if (cached) return cached;
+
       console.log(`Creating chat completion with model: ${options.model}`);
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -65,6 +92,7 @@ export class OpenRouterService {
       }
 
       const result: ChatCompletionResponse = await response.json();
+      this.setCache(key, result);
       console.log(
         `Chat completion successful in ${Date.now() - startTime}ms`,
       );

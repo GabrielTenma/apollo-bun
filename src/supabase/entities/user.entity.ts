@@ -1,10 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from 'typeorm';
 import { UserAuthProviderEntity } from './user-auth-provider.entity.ts';
 import { UserSessionEntity } from './user-session.entity.ts';
 import { TelegramChatEntity } from './telegram-chat.entity.ts';
 import { FeatureConfigEntity } from './feature-config.entity.ts';
 
 @Entity({ name: 'users' })
+@Index('idx_users_email_active', ['email', 'is_active'])
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

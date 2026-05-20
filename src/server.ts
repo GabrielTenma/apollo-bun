@@ -47,6 +47,14 @@ const telegramService = new TelegramService();
 const supabaseService = new SupabaseService();
 
 // ─── TypeORM bootstrap ─────────────────────────────────────────
+if (!env.string('DATABASE_URL')) {
+  console.error('FATAL: DATABASE_URL is not set. Set it in your .env and restart.');
+  process.exit(1);
+}
+if (!env.string('JWT_SECRET')) {
+  console.error('FATAL: JWT_SECRET is not set. Set it in your .env and restart.');
+  process.exit(1);
+}
 await AppDataSource.initialize().catch((err: any) =>
   log.error({ error: err.message, step: 'typeorm-init' }),
 );
@@ -70,7 +78,7 @@ const coinMarketCapTarget = new CoinmarketCapTarget(scraperService);
 // ─── Elysia app ────────────────────────────────────────────────
 const app = new Elysia()
   .use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3001', 'http://localhost:3000'],
+    origin: (env.string('CORS_ORIGIN') ?? 'http://localhost:5173,http://localhost:3001,http://localhost:3000').split(',').map(s => s.trim()),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   }))
   .use(jwt({
@@ -332,13 +340,15 @@ new OpenrouterRoutineService(
 new SupabaseRoutineService(routineService, supabaseService).start();
 
 // ─── graceful shutdown ─────────────────────────────────────────
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down…');
-  routineService.stopAllRoutines();
+const shutdown = async () => {
+  console.log('Shutting down…');
+  // stop accepting new connections; drain in-flight requests up to 5 s
+  await Promise.race([
+    app.stop(),
+    new Promise<void>((r) => setTimeout(r, 5_000)),
+  ]);
+  await Bun.sleep(1_000);    // give I/O a moment to flush
   process.exit(0);
-});
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down…');
-  routineService.stopAllRoutines();
-  process.exit(0);
-});
+};
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

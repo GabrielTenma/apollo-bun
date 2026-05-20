@@ -16,6 +16,14 @@ export const AppDataSource = new DataSource({
   type: 'postgres',
   url: env.string('DATABASE_URL') ?? '',
   synchronize: false,
+  logging: env.bool('NODE_ENV', false) ? ['query'] : false,
+  extra: {
+    max: 20,
+    min: 5,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
+    keepAlive: true,
+  },
   entities: [
     UserEntity,
     UserAuthProviderEntity,
