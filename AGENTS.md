@@ -224,6 +224,24 @@ DATABASE_URL=postgresql://postgres:yourpassword@yourdomain.com:5432/postgres
 > Elysia server listens on **http://localhost:3000**.
 > CORS origin allows `localhost:5173`, `localhost:3001`, `localhost:3000`.
 
+## Docker
+
+Build and run with Docker. The image is based on `oven/bun:1-distroless`
+
+**Build:**
+```bash
+docker build -t apollo .
+```
+
+**Run:**
+```bash
+docker run -p 3000:3000 --env-file .env apollo
+```
+
+Environment variables (`OPENROUTER_API_KEY`, `TELEGRAM_BOT_TOKEN`, `JWT_SECRET`, `DATABASE_URL`, etc.) are passed via `--env-file` or `-e`. The frontend is baked into the image at build time and served from `/` by Elysia's `file()` helper.
+
+Exposed port: **3000**. Health check `/health` returns `{"status":"ok"}`.
+
 ---
 
 ## Testing

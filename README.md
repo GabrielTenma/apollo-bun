@@ -73,6 +73,20 @@ bun run start            # Start Elysia server (serves API + frontend)
 The Elysia server serves the React frontend from `http://localhost:3000/` using Elysia's native `file()` helper. API routes are prefixed under `/api/v1/`, `/telegram/`, etc. CORS allows `localhost:5173`, `localhost:3001`, and `localhost:3000`.
 
 
+## Docker
+
+Build and run with Docker. The image is based on `oven/bun:1-distroless`.
+
+```bash
+docker build -t apollo .
+docker run -p 3000:3000 --env-file .env apollo
+```
+
+Environment variables are passed via `--env-file` or `-e`. The frontend is baked into the image at build time (served by Elysia `file()` from `/`).
+
+Exposed port: **3000**. Health check: `GET /health` → `{"status":"ok"}`.
+
+
 ## Preview
 ![Web](.github/assets/preview.png)
 
