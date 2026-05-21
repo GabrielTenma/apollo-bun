@@ -27,7 +27,7 @@ export class FeatureConfigEntity {
   @Column({ type: 'boolean', nullable: true })
   value_boolean?: boolean;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   value_json?: any;
 
   @Column({ type: 'text', nullable: true })
@@ -36,7 +36,7 @@ export class FeatureConfigEntity {
   @Column({ type: 'varchar', length: 50 })
   scope_type: string;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'varchar', length: 36, nullable: true })
   scope_id?: string;
 
   @Column({ type: 'int', default: 0 })
@@ -45,14 +45,14 @@ export class FeatureConfigEntity {
   @Column({ type: 'boolean', default: true })
   is_enabled: boolean;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'varchar', length: 36, nullable: true })
   updated_by?: string;
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  created_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  created_at: string | Date;
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  updated_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  updated_at: string | Date;
 
   @ManyToOne(() => UserEntity, (user) => user.updatedConfigs)
   @JoinColumn({ name: 'updated_by' })

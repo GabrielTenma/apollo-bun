@@ -13,13 +13,13 @@ export class TelegramBotEntity {
   @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
   bot_username?: string;
 
-  @Column({ type: 'uuid', default: () => 'gen_random_uuid()' })
+  @Column({ type: 'varchar' })
   webhook_secret: string;
 
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Column({ type: 'jsonb', default: {} })
+  @Column({ type: 'json' })
   config: any;
 
   @OneToMany(() => TelegramChatEntity, (chat) => chat.bot)

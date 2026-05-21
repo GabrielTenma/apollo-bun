@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  Index,
+} from 'typeorm';
 import { UserAuthProviderEntity } from './user-auth-provider.entity.ts';
 import { UserSessionEntity } from './user-session.entity.ts';
 import { TelegramChatEntity } from './telegram-chat.entity.ts';
@@ -22,14 +28,14 @@ export class UserEntity {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Column({ type: 'jsonb', default: ['user'] })
+  @Column({ type: 'json' })
   roles: string[];
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  created_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  created_at: string | Date;
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  updated_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  updated_at: string | Date;
 
   @OneToMany(() => UserAuthProviderEntity, (provider) => provider.user)
   authProviders: UserAuthProviderEntity[];

@@ -15,7 +15,7 @@ export class TelegramChatEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 36 })
   bot_id: string;
 
   @Column({ type: 'bigint' })
@@ -36,10 +36,10 @@ export class TelegramChatEntity {
   @Column({ type: 'varchar', length: 100, nullable: true })
   last_name?: string;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'varchar', length: 36, nullable: true })
   linked_user_id?: string;
 
-  @Column({ type: 'jsonb', default: {} })
+  @Column({ type: 'json' })
   settings: any;
 
   @ManyToOne(() => TelegramBotEntity, (bot) => bot.chats)

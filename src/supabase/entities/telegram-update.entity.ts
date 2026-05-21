@@ -14,7 +14,7 @@ export class TelegramUpdateEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 36 })
   bot_id: string;
 
   @Column({ type: 'bigint' })
@@ -23,14 +23,14 @@ export class TelegramUpdateEntity {
   @Column({ type: 'bigint', nullable: true })
   telegram_chat_id?: number;
 
-  @Column({ type: 'timestamptz', nullable: true })
-  message_date?: Date;
+  @Column({ type: 'varchar', nullable: true })
+  message_date?: string | Date;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   raw_update: any;
 
-  @Column({ type: 'timestamptz', nullable: true })
-  processed_at?: Date;
+  @Column({ type: 'varchar', nullable: true })
+  processed_at?: string | Date;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   processed_by?: string;
@@ -38,8 +38,8 @@ export class TelegramUpdateEntity {
   @Column({ type: 'text', nullable: true })
   error?: string;
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  created_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  created_at: string | Date;
 
   @ManyToOne(() => TelegramBotEntity, (bot) => bot.updates)
   @JoinColumn({ name: 'bot_id' })
