@@ -13,18 +13,40 @@
 
 ## Architecture
 
-### Directory Layout (post-migration)
+### Directory Layout (plugin-based architecture — post-migration)
 
 ```
 src/
-├── server.ts                       # Elysia entry point; replaces main.ts + all NestJS modules
+├── index.ts                       # Entry point — thin wrapper, imports ./app
+├── app.ts                         # Composition root; wires plugins + routes + middleware
 │
 ├── config/
 │   ├── env.ts                       # Bun.env helper (env.string / env.number / env.bool)
 │   └── index.ts                     # barrel export
 │
+├── types/                           # Module augmentation + shared interfaces
+│   └── apollo.d.ts                  # Extends Elysia Context with context auth/getClient/… types
+│
+├── plugins/                         # Elysia plugins — one per external service
+│   ├── index.ts                     # barrel export
+│   ├── supabasePlugin.ts            # discover + create Supabase clients; decorate 'getClient' / 'supabaseService'
+│   ├── openrouterPlugin.ts          # OpenRouterFacade; decorate 'createChatCompletion' 'listModels' 'chat'
+│   └── telegramPlugin.ts            # TelegramService wrapper; decorate 'sendMessage' 'sendText' 'getMe'
+│
+├── middleware/                       # Reusable route guards
+│   └── auth.guard.ts               # derive-based JWT guard → context.authPayload
+│
+├── routes/                           # Grouped route definitions
+│   ├── index.ts                     # re-exports all versioned groups
+│   └── v1/
+│       ├── auth.route.ts            # /auth/*  (create-user, login, refresh, profile)
+│       ├── supabase.route.ts        # /supabase/*  (CRUD passthrough + health)
+│       ├── openrouter.route.ts      # /openrouter/*  (chat, models, completion, health)
+│       ├── telegram.route.ts        # /telegram/*  (webhook, send-message, bot-info)
+│       └── scraper.route.ts         # /scraper/*  (scrape, sources CRUD, MemoryKeyStore reads)
+│
 ├── lib/                             # Core library — plain classes, no framework
-│   ├── db.ts                         # Manual TypeORM DataSource (AppDataSource)
+│   ├── db.ts                         # Manual TypeORM DataSource (AppDataSource); SQLite fallback
 │   ├── routine.service.ts            # startRoutine / stopRoutine / executeRoutine; 'wait' mode = recursive setTimeout
 │   ├── memory-key-store.ts           # In-memory store; TTL, getOrSet with async factory
 │   ├── index.ts                      # barrel export
@@ -34,7 +56,7 @@ src/
 │       ├── openrouter.service.ts     # createChatCompletion / listModels / chat (fetch, AbortSignal.timeout)
 │       ├── telegram.service.ts       # sendMessage / sendText / getMe / setWebhook / makeRequest (fetch)
 │       ├── supabase.service.ts       # Supabase CRUD via @supabase/supabase-js (multi-connection)
-│       ├── supabase-orm.service.ts   # Generic TypeORM CRUD wrapper (currently unused in server.ts)
+│       ├── supabase-orm.service.ts   # Generic TypeORM CRUD wrapper (currently unused)
 │       ├── financial-agent.service.ts # FinancialAgentService: hedge-fund style prompt → OpenRouter
 │       ├── scraper-routine.service.ts  # 3-target scrapeMultiple every 20 s → MemoryKeyStore + ScrapedDataEntity
 │       ├── openrouter-routine.service.ts # Reads scraped store → FinancialAgentService → stores completion
@@ -43,8 +65,6 @@ src/
 ├── scraper/                         # Playwright scrape targets (plain classes, no NestJS decorators)
 │   ├── interfaces/
 │   │   └── scraper.interface.ts      # ScrapeOptions, ScrapeResult, ExtractConfig, ElementSelector
-│   ├── routines/
-│   │   └── scraper-routine.service.ts  # (pending; moved to src/lib/services/)
 │   ├── target/
 │   │   ├── financialjuice.target.ts  # FinancialJuiceTarget: live.financialjuice.com/news → NewsItem[]
 │   │   ├── yahoofinance.target.ts    # YahooFinanceTarget: finance.yahoo.com/news/stream → YahooNewsItem[]
@@ -54,8 +74,6 @@ src/
 │   ├── interfaces/
 │   │   ├── openrouter.interface.ts   # ChatMessage, ChatCompletionOptions, ChatCompletionResponse, OpenRouterModel
 │   │   └── financialagent.interface.ts # PromptConfig { financialJuiceContent, yahooFinanceContent, … }
-│   └── routines/
-│       └── openrouter-routine.service.ts  # (moved to src/lib/services/)
 │
 ├── telegram/                        # Telegram config & types
 │   ├── interfaces/
@@ -63,37 +81,32 @@ src/
 │   └── config/
 │       └── telegram.config.ts        # load: botToken / webhookUrl / webhookSecret / timeout
 │
-├── supabase/                        # TypeORM entities + Supabase controller legacy
-│   ├── entities/
-│   │   ├── scraped-data.entity.ts      # scraped_data (unique: source_id + data_hash)
-│   │   ├── scraping-source.entity.ts   # scraping_sources
-│   │   ├── user.entity.ts              # users
-│   │   ├── user-session.entity.ts      # user_sessions (revocable refresh-token sessions)
-│   │   ├── user-auth-provider.entity.ts
-│   │   ├── telegram-bot.entity.ts
-│   │   ├── telegram-chat.entity.ts
-│   │   ├── telegram-update.entity.ts
-│   │   └── feature-config.entity.ts
-│   ├── routines/
-│   │   └── supabase-routine.service.ts  # (moved to src/lib/services/)
-│   └── config/
-│       └── supabase.config.ts        # registerAs: SUPABASE_URL / SUPABASE_KEY
+├── supabase/                        # TypeORM entities
+│   └── entities/
+│       ├── scraped-data.entity.ts      # scraped_data
+│       ├── scraping-source.entity.ts   # scraping_sources
+│       ├── user.entity.ts              # users
+│       ├── user-session.entity.ts      # user_sessions
+│       ├── user-auth-provider.entity.ts
+│       ├── telegram-bot.entity.ts
+│       ├── telegram-chat.entity.ts
+│       ├── telegram-update.entity.ts
+│       └── feature-config.entity.ts
 │
 ├── auth/
-│   ├── auth.service.ts               # AuthService (plain class; JWT sign via Elysia jwt plugin)
-│   ├── strategies/
-│   │   └── jwt.strategy.ts           # JwtPayload interface only (Passport strategy removed)
-│   └── (controller/module removed)   # Routes are defined directly in server.ts
+│   ├── auth.service.ts               # AuthService (plain class; injected via .decorate() in app.ts)
+│   └── strategies/
+│       └── jwt.strategy.ts           # JwtPayload interface
 │
-└── web/                              # React+ Vite frontend
+└── web/                              # React+ Vite frontend (unaffected)
     ├── src/                          # Frontend source
     │   ├── App.tsx
     │   ├── main.tsx
     │   ├── index.css
-    │   ├── pages/                    # Route-level pages
+    │   ├── pages/
     │   └── components/
-    │       └── PortfolioBlock/PortfolioBlock.tsx  # Fetches /api/v1/openrouter/completion; renders Markdown
-    ├── index.html                    # Vite entry HTML (copied from src/web/index.html)
+    │       └── PortfolioBlock/PortfolioBlock.tsx   # Fetches /api/v1/openrouter/completion
+    ├── index.html                    # Vite entry HTML
     └── vite.config.ts                # Vite config: root = src/web, outDir = dist/web
 ```
 
@@ -104,14 +117,14 @@ src/
 ```
 Scraping Targets (Playwright)
   FinancialJuice, YahooFinance, CoinmarketCap
-        ↓ [ScraperRoutineService ~ every 20 s]
-MemoryKeyStore (in-process, Elysia derive store)
+        ↓ [ScraperRoutineService ~ every 20 s] (started in app.ts)
+MemoryKeyStore (in-process, Elysia store via .decorate)
   financialjuice / yahoofinance / coinmarketcap
-        ↓ [OpenrouterRoutineService ~ when all 3 present]
+        ↓ [OpenrouterRoutineService ~ when all 3 present] (started in app.ts)
 OpenRouter AI (FinancialAgentService)  →  Markdown analysis
         ↓
 ScrapedDataEntity { source_id: openrouter UUID, status: 'result' }
-  saved to PostgreSQL via TypeORM (AppDataSource)
+  saved to PostgreSQL/SQLite via TypeORM (AppDataSource)
         ↓
 GET /api/v1/openrouter/completion  →  latest + previous completions
   ↓  consumed by React frontend (PortfolioBlock)
@@ -130,10 +143,10 @@ GET /*                           →  React SPA index.html (spa fallback route)
   Execution mode: `ROUTINE_EXECUTION_MODE=wait|skip|overlap` (default `wait`).
 
 ### Routing
-- All routes are defined directly in `src/server.ts`. No controllers or modules.
-- Routes live under `/api/v1/{module}`.
-- JWT enforcement is implicit: routes that call `jwt` from context are protected; others are open.
-- Service dependencies are injected via `derive()` into Elysia's request context.
+- Route groups live in `src/routes/v1/*.route.ts` and are assembled in `src/app.ts`. No controllers or NestJS-style modules.
+- All routes live under `/api/v1/{module}` (or `/health` at root).
+- JWT enforcement is opt-in: route groups apply `authGuard` via `.use(authGuard)`, others are open.
+- Service dependencies are injected via `.decorate()` at the app level and consumed from context; route handlers never import service classes directly.
 
 ### Routine System
 - `RoutineService.startRoutine(name, fn, intervalMs)` sets up per-routine interval timers via `setInterval`/`setTimeout`.
@@ -145,11 +158,11 @@ GET /*                           →  React SPA index.html (spa fallback route)
 
 ### State
 - `MemoryKeyStore` is the only in-memory store for scraped content — no Redis.
-- `scrapedContentStore.set(key, value)` called at end of each scraper/LLM routine; read by controllers via `derive()` store.
+- `scrapedContentStore.set(key, value)` called at end of each scraper/LLM routine; read by controllers via `store.scrapedContentStore`.
 
 ### Logging
 - Structured logging via [evlog](https://evlog.dev) v2 — one wide event per error, zero scattered lines.
-- `initLogger()` is called once at server start (line ~59 of `src/server.ts`). No `console.error` / `console.warn` / `console.log` anywhere in production code.
+- `initLogger()` is called once at server start (line ~65 of `src/app.ts`). No `console.error` / `console.warn` / `console.log` anywhere in production code.
 - `log.error({ error: e.message, route: '/api/v1/…' })` — single-arg `Record<string, unknown>` form used in every catch block. Passes TS type-check without `as any`.
 - Routes that log errors: all auth (`create-user`, `login`, `refresh`) and all telegram (`webhook`, `send-message`, `send-text`, `set-webhook`, `bot-info`).
 - Startup / shutdown `console.log` messages are intentionally raw — those are process-lifecycle signals, not structured events.
@@ -208,7 +221,7 @@ SQLITE_DATABASE=data/apollo.sqlite
 
 ## Commands
 
-> All commands are run with **bun**. `npm` has been removed. Server entry point is `src/server.ts`.
+> All commands are run with **bun**. `npm` has been removed. Server entry point is `src/index.ts`.
 
 | Task | Command |
 |---|---|
@@ -258,8 +271,8 @@ Exposed port: **3000**. Health check `/health` returns `{"status":"ok"}`.
 
 ## Design Patterns & Notable Decisions
 
-1. **No DI Container** — Elysia does not provide dependency injection. All services are plain TypeScript classes instantiated once at the top of `src/server.ts`. Dependencies flowing into route handlers come from Elysia's `derive()` and closure capture.
-2. **Elysia derive store** — Shared service instances (`authService`, `scraperService`, etc.) are injected into every route handler's context via `.derive()` so they are accessible as `store.authService`, `store.scraperService`, etc.
+1. **No DI Container** — Elysia does not provide dependency injection. All services are plain TypeScript classes instantiated once at the top of `src/app.ts`. Dependencies flowing into route handlers come from Elysia's `.decorate()` and closure capture.
+2. **Elysia decorate store** — Shared service instances (`authService`, `scraperService`, etc.) are injected into every route handler's context via `.decorate()` so they are accessible as `store.authService`, `store.scraperService`, etc.
 3. **Config via Bun.env** — `src/config/env.ts` is the single env-var reader. No NestJS `ConfigModule` or eager-snapshot cache.
 4. **Manual TypeORM bootstrap** — `AppDataSource` is a plain `new DataSource({...})` in `src/lib/db.ts`, initialized explicitly at server start with `.initialize()`. No NestJS `TypeOrmModule`.
 5. **Routine Service** — `RoutineService` is a plain class with `startRoutine(name, fn, ms)` returning a number (Bun timer ID, not `NodeJS.Timeout`). 'wait' mode uses recursive `setTimeout`.

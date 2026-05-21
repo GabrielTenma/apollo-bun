@@ -9,8 +9,8 @@
   "scripts": {
     "check": "bunx tsc --noEmit",
     "build": "",
-    "start": "bun run src/server.ts",
-    "dev": "bun --watch run src/server.ts",
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch run src/index.ts",
     "lint": "bunx eslint \"src/**/*.ts\" --fix",
     "web:dev": "bunx vite",
     "web:build": "bunx vite build",
