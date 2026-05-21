@@ -15,10 +15,10 @@
 
 ![Branches](https://www.shieldcn.dev/github/branches/GabrielTenma/apollo-bun.svg?variant=ghost&size=xs)
 ![Last commit](https://www.shieldcn.dev/github/last-commit/GabrielTenma/apollo-bun.svg?variant=secondary&size=xs)
-![Release](https://www.shieldcn.dev/github/release/GabrielTenma/apollo-bun.svg?size=xs)
+![Release](https://www.shieldcn.dev/github/release/GabrielTenma/apollo-bun.svg?size=xs&variant=secondary)
 ![CI](https://www.shieldcn.dev/github/ci/GabrielTenma/apollo-bun.svg?variant=secondary&size=xs)
 ![License](https://www.shieldcn.dev/github/license/GabrielTenma/apollo-bun.svg?variant=ghost&size=xs)
-![Agent-friendly AGENTS.md](https://www.shieldcn.dev/badge/Agent--friendly-AGENTS.md-D97757.svg?variant=secondary&size=xs)
+![Agent-friendly AGENTS.md](https://www.shieldcn.dev/badge/Agent--friendly-AGENTS.md-D97757.svg?variant=ghost&size=xs)
 
 
 ## Overview
