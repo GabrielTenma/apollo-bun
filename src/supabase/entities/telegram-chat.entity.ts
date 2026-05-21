@@ -10,7 +10,7 @@ import { TelegramBotEntity } from './telegram-bot.entity.ts';
 import { UserEntity } from './user.entity.ts';
 
 @Entity({ name: 'telegram_chats' })
-@Unique(['bot_id', 'telegram_chat_id'])
+@Unique(['bot', 'telegram_chat_id'])
 export class TelegramChatEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -36,7 +36,7 @@ export class TelegramChatEntity {
   @Column({ type: 'varchar', length: 100, nullable: true })
   last_name?: string;
 
-  @Column({ type: 'varchar', length: 36, nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   linked_user_id?: string;
 
   @Column({ type: 'json' })

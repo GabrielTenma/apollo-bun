@@ -9,7 +9,7 @@ import {
 import { TelegramBotEntity } from './telegram-bot.entity.ts';
 
 @Entity({ name: 'telegram_updates' })
-@Unique(['bot_id', 'update_id'])
+@Unique(['bot', 'update_id'])
 export class TelegramUpdateEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

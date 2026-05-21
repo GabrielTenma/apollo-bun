@@ -10,7 +10,7 @@ import {
 import { ScrapingSourceEntity } from './scraping-source.entity.ts';
 
 @Entity({ name: 'scraped_data' })
-@Unique(['source_id', 'data_hash'])
+@Unique(['source', 'data_hash'])
 @Index('idx_scraped_captured', ['captured_at'])
 @Index('idx_scraped_status', ['status'])
 export class ScrapedDataEntity {

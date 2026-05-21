@@ -12,7 +12,7 @@ export class UserAuthProviderEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 36 })
+  @Column({ type: 'uuid' })
   user_id: string;
 
   @Column({ type: 'varchar', length: 50 })
