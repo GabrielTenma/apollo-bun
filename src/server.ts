@@ -342,11 +342,14 @@ new SupabaseRoutineService(routineService, supabaseService).start();
 // ─── graceful shutdown ─────────────────────────────────────────
 const shutdown = async () => {
   console.log('Shutting down…');
-  // stop accepting new connections; drain in-flight requests up to 5 s
-  await Promise.race([
-    app.stop(),
-    new Promise<void>((r) => setTimeout(r, 5_000)),
-  ]);
+  try {
+    await Promise.race([
+      app.stop(),
+      new Promise<void>((r) => setTimeout(r, 5_000)),
+    ]);
+  } catch {
+    // app was not yet fully started or already stopped
+  }
   await Bun.sleep(1_000);    // give I/O a moment to flush
   process.exit(0);
 };

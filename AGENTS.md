@@ -7,7 +7,7 @@
 - **Author:** GabrielTenma
 - **License:** Apache-2.0
 - **Stack:** Elysia 1.4 · Bun · TypeORM · Playwright · React 19 · Vite · TailwindCSS v4 · DaisyUI · Supabase (PostgreSQL) · OpenRouter AI · Telegram Bot API · bcrypt JWT · evlog
-- **Branch:** `migration/bun` — active NestJS → Elysia + Node.js → Bun migration branch; `main` is the old NestJS baseline
+- **Branch:** `migration/bun` — active NestJS → Elysia + Node.js → Bun migration branch and merged into `main` branch
 
 ---
 
