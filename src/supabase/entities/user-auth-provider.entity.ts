@@ -12,9 +12,6 @@ export class UserAuthProviderEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 36 })
-  user_id: string;
-
   @Column({ type: 'varchar', length: 50 })
   provider: string;
 

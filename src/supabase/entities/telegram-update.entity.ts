@@ -9,12 +9,12 @@ import {
 import { TelegramBotEntity } from './telegram-bot.entity.ts';
 
 @Entity({ name: 'telegram_updates' })
-@Unique(['bot_id', 'update_id'])
+@Unique(['bot', 'update_id'])
 export class TelegramUpdateEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 36 })
+  @Column({ type: 'varchar' })
   bot_id: string;
 
   @Column({ type: 'bigint' })
