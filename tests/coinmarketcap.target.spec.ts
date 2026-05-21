@@ -12,7 +12,7 @@ import * as cheerio from 'cheerio';
 /**
  * Parser: scrapes a CoinmarketCap HTML page into objects conforming to
  * the CoinmarketCapTarget.CoinData interface
- * (src/scraper/target/coinmarketcap.target.ts:9).
+ * (src/scraper/target/coinmarketcap.target.ts:5).
  */
 function parsePriceList(html: string): Record<string, unknown>[] {
   const $ = cheerio.load(html);
@@ -41,18 +41,23 @@ function parsePriceList(html: string): Record<string, unknown>[] {
   return coins;
 }
 
+/**
+ * Page URL.
+ */
 const URL = 'https://coinmarketcap.com/';
 const SELECTOR = 'table.cmc-table tbody tr';
 const TIMEOUT = 35000;
 
-test.describe('CoinmarketCapTarget', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: TIMEOUT });
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.locator(SELECTOR).first({ timeout: TIMEOUT });
-  });
+/**
+ * Setup: navigate to CoinmarketCap before each test.
+ */
+test.beforeEach(async ({ page }) => {
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: TIMEOUT });
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.locator(SELECTOR).first({ timeout: TIMEOUT });
+});
 
-  test('page loads and cmc-table rows are present', async ({ page }) => {
+test('page loads and cmc-table rows are present', async ({ page }) => {
     const rowCount = await page.locator(SELECTOR).count();
     expect(rowCount).toBeGreaterThan(0);
   });
@@ -111,4 +116,3 @@ test.describe('CoinmarketCapTarget', () => {
       expect(coin.symbol.length).toBeGreaterThan(0);
     }
   });
-});
