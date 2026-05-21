@@ -23,6 +23,7 @@ import { FinancialAgentService }    from './lib/services/financial-agent.service
 import { ScraperRoutineService }    from './lib/services/scraper-routine.service.ts';
 import { OpenrouterRoutineService } from './lib/services/openrouter-routine.service.ts';
 import { SupabaseRoutineService }   from './lib/services/supabase-routine.service.ts';
+import { isApiResponse, buildResponse } from './lib/response.util.ts';
 
 import { supabasePlugin }           from './plugins/supabasePlugin.ts';
 import { openrouterPlugin }         from './plugins/openrouterPlugin.ts';
@@ -80,8 +81,8 @@ initLogger({
   },
 });
 
-// ─── Elysia app ───────────────────────────────────────────────────
-export const app = new Elysia()
+  // ─── Elysia app ───────────────────────────────────────────────────
+  export const app = new Elysia()
   /**
    * Global middleware — applies to every route registered below.
    */
@@ -93,6 +94,55 @@ export const app = new Elysia()
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   }))
   .use(jwt({ name: 'jwt', secret: env.string('JWT_SECRET') ?? '' }))
+
+  /**
+   * ── Universal response envelope ───────────────────────────────────
+   *
+   * Every /api/v1/* handler returns whatever it deems fit as the plain
+   * data payload: a JSON object, an array, a plain value, etc.  This hook
+   * is the SINGLE authority for the HTTP envelope — handlers cannot opt out.
+   *
+   * Shape: { success: boolean, data: T, correlation_id: string, timestamp: string }
+   *
+   * Exempted paths (passed through verbatim):
+   *   /health           — health-check needs its own plain shape
+   *   /, /static, /*    — SPA static-file responses (Elysia File<>)
+   *
+   * Exemption test:
+   *   1. path starts with /api/v1/ → wrap
+   *   2. result is Elysia File    → pass through
+   *   3. already-wrapped          → pass through (idempotent, cost-free)
+   *   4. everything else          → wrap
+   */
+  .onAfterHandle((context) => {
+    // ── 1. scope check — only /api/v1/* routes get wrapped ──────────
+    const path = context.path;
+    if (!path.startsWith('/api/v1/')) return undefined; // let Elysia's default handler run
+
+    // Every /api/v1 response gets a correlation-id header
+    context.set.headers ??= {};
+    (context.set.headers as Record<string, string>)['x-correlation-id'] =
+      crypto.randomUUID();
+
+    const result = (context as any).responseValue;
+
+    // ── 2. static-file (SPA) pass-through ───────────────────────────
+    if (result && typeof result === 'object' && 'type' in result && (result as any).type === 'file')
+      return result;
+
+    // ── 3. full envelope — already wrapped, return as-is ─────────────
+    if (isApiResponse(result)) return result;
+
+    // ── 4. pre-wrapped handler response { success, data } — unwrap & re-wrap
+    if (result && typeof result === 'object') {
+      const r: Record<string, unknown> = result as any;
+      if ('success' in r && 'data' in r)
+        return buildResponse(r.data, r.success as boolean);
+    }
+
+    // ── 5. unwrapped handler value — wrap from scratch ───────────────
+    return buildResponse(result);
+  })
 
   /**
    * Decorated store — every value below is read via `context.<name>` in route handlers.

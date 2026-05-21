@@ -8,9 +8,14 @@
 import type { JwtPayload }     from '../auth/strategies/jwt.strategy.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { OpenRouterModel } from '../openrouter/interfaces/openrouter.interface.ts';
+import type { ApiResponse }    from '../lib/response.util.ts';
 
 declare module 'elysia' {
   interface Context {
+    // Standard /api/v1/* response shape — enforced by onAfterHandle, not by hand.
+    // Type narrowing: route handlers receive data-bearing generics; callers can
+    // constrain with ApiResponse<T> themselves.
+
     // Supabase — supabasePlugin decorates `getClient` at registration time.
     getClient: (name?: string) => SupabaseClient;
     /** Full Supabase CRUD convenience service (injected by app.ts). */
