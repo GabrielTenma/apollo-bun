@@ -10,23 +10,23 @@ import {
 import { ScrapingSourceEntity } from './scraping-source.entity.ts';
 
 @Entity({ name: 'scraped_data' })
-@Unique(['source_id', 'data_hash'])
+@Unique(['source', 'data_hash'])
 @Index('idx_scraped_captured', ['captured_at'])
 @Index('idx_scraped_status', ['status'])
 export class ScrapedDataEntity {
   @PrimaryGeneratedColumn('uuid')
   id?: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 36 })
   source_id: string;
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  captured_at?: Date;
+  @Column({ type: 'varchar', nullable: true })
+  captured_at?: string | Date;
 
   @Column({ type: 'text', nullable: true })
   raw_content?: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   parsed_data?: object;
 
   @Column({ type: 'varchar', length: 64, nullable: true })

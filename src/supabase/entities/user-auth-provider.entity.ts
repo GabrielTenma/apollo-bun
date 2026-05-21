@@ -21,11 +21,11 @@ export class UserAuthProviderEntity {
   @Column({ type: 'varchar', length: 255 })
   provider_user_id: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   provider_data?: any;
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  created_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  created_at: string | Date;
 
   @ManyToOne(() => UserEntity, (user) => user.authProviders)
   @JoinColumn({ name: 'user_id' })

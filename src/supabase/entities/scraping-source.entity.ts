@@ -14,7 +14,7 @@ export class ScrapingSourceEntity {
   @Column({ type: 'varchar', length: 50 })
   source_type: string;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   connection_config: any;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
@@ -23,8 +23,8 @@ export class ScrapingSourceEntity {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  created_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  created_at: string | Date;
 
   @OneToMany(() => ScrapedDataEntity, (data) => data.source)
   scrapedData: ScrapedDataEntity[];
