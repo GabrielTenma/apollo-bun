@@ -45,6 +45,15 @@ export class FeatureConfigEntity {
   @Column({ type: 'boolean', default: true })
   is_enabled: boolean;
 
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  updated_by?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  created_at: string | Date;
+
+  @Column({ type: 'varchar', nullable: true })
+  updated_at: string | Date;
+
   @ManyToOne(() => UserEntity, (user) => user.updatedConfigs)
   @JoinColumn({ name: 'updated_by' })
   updatedBy?: UserEntity;

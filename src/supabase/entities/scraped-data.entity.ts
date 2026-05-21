@@ -17,6 +17,9 @@ export class ScrapedDataEntity {
   @PrimaryGeneratedColumn('uuid')
   id?: string;
 
+  @Column({ type: 'varchar', length: 36 })
+  source_id: string;
+
   @Column({ type: 'varchar', nullable: true })
   captured_at?: string | Date;
 

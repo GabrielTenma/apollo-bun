@@ -15,6 +15,9 @@ export class TelegramChatEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'varchar', length: 36 })
+  bot_id: string;
+
   @Column({ type: 'bigint' })
   telegram_chat_id: number;
 

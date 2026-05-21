@@ -14,7 +14,7 @@ export class TelegramUpdateEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', length: 36 })
   bot_id: string;
 
   @Column({ type: 'bigint' })
