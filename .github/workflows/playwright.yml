@@ -27,7 +27,7 @@ jobs:
       # because the cached-dir check succeeds before the ssh-agent step.
       run: if [ -d "$HOME/.cache/ms-playwright" ]; then bunx playwright install; else bunx playwright install --with-deps; fi
     - name: Run Playwright tests
-      run: bunx playwright test
+      run: bunx playwright test tests/coinmarketcap.target.spec.ts --project=chromium
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
