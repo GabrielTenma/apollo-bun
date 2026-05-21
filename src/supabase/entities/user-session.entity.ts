@@ -24,17 +24,17 @@ export class UserSessionEntity {
   @Column({ type: 'text', nullable: true })
   user_agent?: string;
 
-  @Column({ type: 'inet', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   ip_address?: string;
 
-  @Column({ type: 'timestamptz' })
-  expires_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  expires_at: string | Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
-  revoked_at?: Date;
+  @Column({ type: 'varchar', nullable: true })
+  revoked_at?: string | Date;
 
-  @Column({ type: 'timestamptz', default: () => 'now()' })
-  created_at: Date;
+  @Column({ type: 'varchar', nullable: true })
+  created_at: string | Date;
 
   @ManyToOne(() => UserEntity, (user) => user.sessions)
   @JoinColumn({ name: 'user_id' })

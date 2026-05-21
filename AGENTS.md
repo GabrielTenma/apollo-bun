@@ -199,6 +199,9 @@ SUPABASE_KEY=
 SUPABASE_PASSWORD=
 SUPABASE_USEDIRECT=true
 DATABASE_URL=postgresql://postgres:yourpassword@yourdomain.com:5432/postgres
+
+# SQLite (fallback when DATABASE_URL is absent)
+SQLITE_DATABASE=data/apollo.sqlite
 ```
 
 ---
@@ -262,4 +265,5 @@ Exposed port: **3000**. Health check `/health` returns `{"status":"ok"}`.
 5. **Routine Service** — `RoutineService` is a plain class with `startRoutine(name, fn, ms)` returning a number (Bun timer ID, not `NodeJS.Timeout`). 'wait' mode uses recursive `setTimeout`.
 6. **JWT via Elysia plugin** — `@elysiajs/jwt` plugin handles sign/verify. Auth route handlers call `(app.jwt as any).sign(payload, options)` directly. No NestJS `JwtModule` or `JwtService`.
 7. **TypeORM entities** — Entities under `src/supabase/entities/` use `@Column({ type: '...' })` with explicit column types to satisfy `tsc` without `emitDecoratorMetadata`. `experimentalDecorators: true` is set for TypeORM decorator support; `reflect-metadata` is required only by TypeORM.
-8. **Bun module convention** — `tsconfig.json` uses `"module": "esnext"` + `"moduleResolution": "Bundler"` + `"allowImportingTsExtensions": true`. Internal imports use explicit `.ts` file extensions (required by Bundler resolution).
+ 8. **Bun module convention** — `tsconfig.json` uses `"module": "esnext"` + `"moduleResolution": "Bundler"` + `"allowImportingTsExtensions": true`. Internal imports use explicit `.ts` file extensions (required by Bundler resolution).
+ 9. **SQLite fallback** — When `DATABASE_URL` is not set, `src/lib/db.ts` automatically creates a local SQLite datasource at `data/apollo.sqlite` with `synchronize: true` (auto-creates tables). All entity column types are SQLite-compatible (varchar for uuid/timestamptz, json for jsonb) so a single codebase powers both local dev (SQLite) and production (PostgreSQL/Supabase). Set `SQLITE_DATABASE` to override the SQLite file path.

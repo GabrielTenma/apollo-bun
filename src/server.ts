@@ -48,13 +48,9 @@ const supabaseService = new SupabaseService();
 
 // ─── TypeORM bootstrap ─────────────────────────────────────────
 if (!env.string('DATABASE_URL')) {
-  console.error('FATAL: DATABASE_URL is not set. Set it in your .env and restart.');
-  process.exit(1);
+  console.warn('DATABASE_URL is not set — falling back to local SQLite (data/apollo.sqlite).');
 }
-if (!env.string('JWT_SECRET')) {
-  console.error('FATAL: JWT_SECRET is not set. Set it in your .env and restart.');
-  process.exit(1);
-}
+
 await AppDataSource.initialize().catch((err: any) =>
   log.error({ error: err.message, step: 'typeorm-init' }),
 );
