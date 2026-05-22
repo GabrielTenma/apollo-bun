@@ -1,7 +1,7 @@
 import { useState, useEffect, ReactNode, useCallback, memo } from "react";
 import Markdown from "react-markdown";
 import Gfm from "remark-gfm";
-import StickyNavBar from "../navigation-bar/StickyNavBar";
+import StickyNavBar from "../navigation-bar/stickynavbar";
 import React from "react";
 
 const RETRY_ATTEMPTS = 2;

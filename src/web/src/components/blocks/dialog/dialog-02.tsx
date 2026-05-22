@@ -14,7 +14,7 @@ import {
 import { Check } from "lucide-react";
 import { useState } from "react";
 
-export default function Dialog01() {
+export default function Dialog04() {
   const [open, setOpen] = useState(true);
 
   return (
@@ -37,9 +37,16 @@ export default function Dialog01() {
             amet labore.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="sm:justify-center w-full">
+        <DialogFooter className="flex flex-col sm:flex-row sm:gap-3 w-full gap-2">
           <DialogClose asChild>
-            <Button className="w-full">Go back to dashboard</Button>
+            <Button variant="default" className="w-full sm:w-1/2">
+              Deactivate
+            </Button>
+          </DialogClose>
+          <DialogClose asChild>
+            <Button variant="outline" className="w-full sm:w-1/2">
+              Cancel
+            </Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
