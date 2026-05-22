@@ -16,6 +16,7 @@ interface ContentItem {
 interface CompletionApiResponse {
   success: boolean;
   data: ContentItem;
+  correlation_id: string;
 }
 
 const TABLE_CLS = "table table-xs table-pin-rows table-pin-cols";
@@ -85,7 +86,7 @@ const MarkdownView = React.memo(function MarkdownView({ content }: { content: st
 
 export default React.memo(function PortfolioBlock() {
   const [latest, setLatest] = useState<string>("");
-  const [previous, setPrevious] = useState<string>("");
+  const [correlationId, setCorrelationId] = useState<string>("");
   const [error, setError] = useState<string>("");
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
@@ -95,7 +96,7 @@ export default React.memo(function PortfolioBlock() {
     const json: CompletionApiResponse = await res.json();
     if (!json.success) throw new Error(json.success === false ? (json as any).message : 'Unknown error');
     setLatest(json.data.latest);
-    setPrevious(json.data.previous);
+    setCorrelationId(json.correlation_id)
   }, []);
 
   useEffect(() => {
@@ -146,7 +147,7 @@ export default React.memo(function PortfolioBlock() {
                       Correlation:
                     </span>
                     <span className="text-base-content/80">
-                      {latest && previous && !error ? "Has previous" : error ? "Error: " + error : "No previous data"}
+                      {correlationId ?? 'Not Available'}
                     </span>
                   </div>
                 </div>
