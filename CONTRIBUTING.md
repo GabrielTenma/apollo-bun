@@ -215,7 +215,3 @@ Keep messages concise and focused on the _why_, not the _what_ — consistent wi
 - [ ] `bun run test` passes
 - [ ] Relevant tests added or updated
 - [ ] AGENTS.md consulted for naming and architecture conventions
-
----
-
- thanks to [GabrielTenma](https://github.com/GabrielTenma) for this project ✌️
