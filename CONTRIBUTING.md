@@ -210,7 +210,7 @@ Keep messages concise and focused on the _why_, not the _what_ — consistent wi
 ### Pull request checklist
 
 - [ ] `bun run check` passes (no TypeScript errors)
-- [ ] `bun run lint` passes (no ESLint errors)
+- [ ] `bun run lint` passes (no Biome lint errors)
 - [ ] `bun run format` has been run (no formatting diff)
 - [ ] `bun run test` passes
 - [ ] Relevant tests added or updated

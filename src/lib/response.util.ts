@@ -4,10 +4,10 @@
  * so individual handlers cannot change the envelope; they only supply `data`.
  */
 export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data: T;
-  correlation_id: string;
-  timestamp: string;
+	success: boolean;
+	data: T;
+	correlation_id: string;
+	timestamp: string;
 }
 
 /**
@@ -20,14 +20,14 @@ export interface ApiResponse<T = unknown> {
  * @param correlation Optional correlation ID (random UUID generated if omitted)
  */
 export const buildResponse = <T>(
-  data:         T,
-  ok:           boolean                         = true,
-  correlation?: string,
+	data: T,
+	ok: boolean = true,
+	correlation?: string,
 ): ApiResponse<T> => ({
-  success: ok,
-  data,
-  correlation_id: correlation ?? crypto.randomUUID(),
-  timestamp: new Date().toISOString(),
+	success: ok,
+	data,
+	correlation_id: correlation ?? crypto.randomUUID(),
+	timestamp: new Date().toISOString(),
 });
 
 /**
@@ -39,53 +39,54 @@ export const buildResponse = <T>(
  * ever coincidentally supply together.
  */
 export const isApiResponse = (v: unknown): v is ApiResponse<unknown> =>
-  typeof v === 'object' && v !== null &&
-  typeof (v as any).success === 'boolean' &&
-  typeof (v as any).correlation_id === 'string';
+	typeof v === "object" &&
+	v !== null &&
+	typeof (v as any).success === "boolean" &&
+	typeof (v as any).correlation_id === "string";
 
 export const successResponse = <T>(
-  data?:         T,
-  correlation?:  string,
+	data?: T,
+	correlation?: string,
 ): ApiResponse<T> => buildResponse(data ?? (undefined as T), true, correlation);
 
 export const errorResponse = (
-  message:       string,
-  errors?:       string[],
-  correlation?:  string,
+	message: string,
+	errors?: string[],
+	correlation?: string,
 ): ApiResponse<null> => {
-  const payload: Record<string, unknown> = { message };
-  if (errors?.length) payload.errors = errors;
-  return buildResponse<null>(payload as unknown as null, false, correlation);
+	const payload: Record<string, unknown> = { message };
+	if (errors?.length) payload.errors = errors;
+	return buildResponse<null>(payload as unknown as null, false, correlation);
 };
 
 export interface PaginatedResponse<T> extends ApiResponse<T[]> {
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
+	pagination: {
+		total: number;
+		page: number;
+		limit: number;
+		totalPages: number;
+		hasNext: boolean;
+		hasPrev: boolean;
+	};
 }
 
 export const paginatedResponse = <T>(
-  data:          T[],
-  total:         number,
-  page:          number,
-  limit:         number,
-  correlation?:  string,
+	data: T[],
+	total: number,
+	page: number,
+	limit: number,
+	correlation?: string,
 ): PaginatedResponse<T> => ({
-  success: true,
-  data,
-  correlation_id: correlation ?? crypto.randomUUID(),
-  timestamp: new Date().toISOString(),
-  pagination: {
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-    hasNext: page < Math.ceil(total / limit),
-    hasPrev: page > 1,
-  },
+	success: true,
+	data,
+	correlation_id: correlation ?? crypto.randomUUID(),
+	timestamp: new Date().toISOString(),
+	pagination: {
+		total,
+		page,
+		limit,
+		totalPages: Math.ceil(total / limit),
+		hasNext: page < Math.ceil(total / limit),
+		hasPrev: page > 1,
+	},
 });
