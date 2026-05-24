@@ -287,6 +287,7 @@ Exposed port: **3000**. Health check `/health` returns `{"status":"ok"}`.
 
 - **Unit / Integration:** bun test (Bun-native test runner). Test files: `**/*.spec.ts` under `src/`.
 - **E2E:** Playwright (configured in `playwright.config.ts`). CI runs on Ubuntu via `.github/workflows/playwright.yml`.
+- Manual cache control (Bun install cache + Playwright browsers): use "Cache Management" workflow_dispatch in `.github/workflows/cache-management.yml` (supports warm / force-refresh / local-clear modes; always sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`).
 - Run all tests: `bun run test`. Coverage: `bun run test:cov`.
 - Format: `bun run format`.
 

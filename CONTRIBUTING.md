@@ -20,8 +20,11 @@ Thank you for considering a contribution. All contributions — bug reports, fea
 
 ## Code of Conduct
 
-- Be respectful and constructive in discussions.
-- Keep issues and pull requests focused and actionable.
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+Please read it before participating.
+
+All contributors (human and AI agents) are also expected to follow the technical
+and communication standards in [AGENTS.md](AGENTS.md).
 
 ---
 
@@ -169,6 +172,7 @@ Read the AGENTS.md _Naming_ and _Key Conventions_ sections before adding new fil
 
 - **Unit / Integration:** `bun test` (Bun-native). Test files live at `**/*.spec.ts` under `src/`.
 - **E2E:** Playwright — run `bun run test` (CI filters automatically). CI is Ubuntu via `.github/workflows/playwright.yml`.
+- Manual Bun/Playwright cache warming & force-refresh: dispatch "Cache Management" workflow (`.github/workflows/cache-management.yml`).
 - **Coverage:** `bun run test:cov`.
 - **Test names / titles** in `it()` should use `'… (should …)'` / `'… (given …)'` BDD style per the AGENTS.md testing conventions — use the same style when adding new tests.
 - Every route tested must include at minimum a **success case** and a **failure case**.
