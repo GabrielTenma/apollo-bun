@@ -20,8 +20,11 @@ Thank you for considering a contribution. All contributions — bug reports, fea
 
 ## Code of Conduct
 
-- Be respectful and constructive in discussions.
-- Keep issues and pull requests focused and actionable.
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+Please read it before participating.
+
+All contributors (human and AI agents) are also expected to follow the technical
+and communication standards in [AGENTS.md](AGENTS.md).
 
 ---
 

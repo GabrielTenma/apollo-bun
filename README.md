@@ -81,8 +81,6 @@ docker build -t apollo .
 docker run -p 3000:3000 --env-file .env apollo
 ```
 
-For **publishing public releases to Docker Hub**, detailed tagging, push workflows, and CI examples, see [DOCKER_RELEASE.md](DOCKER_RELEASE.md).
-
 Environment variables are passed via `--env-file` or `-e`. The frontend is baked into the image at build time (served by Elysia `file()` from `/`).
 
 Exposed port: **3000**. Health check: `GET /health` → `{"status":"ok"}`.
