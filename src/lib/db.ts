@@ -1,73 +1,106 @@
-// src/lib/db.ts — manual TypeORM DataSource (no NestJS)
-// Falls back to SQLite when DATABASE_URL is not set.
-import 'reflect-metadata';
-import { DataSource } from 'typeorm';
-import { env } from '../config/env.ts';
-import { UserEntity } from '../supabase/entities/user.entity.ts';
-import { UserAuthProviderEntity } from '../supabase/entities/user-auth-provider.entity.ts';
-import { UserSessionEntity } from '../supabase/entities/user-session.entity.ts';
-import { TelegramBotEntity } from '../supabase/entities/telegram-bot.entity.ts';
-import { TelegramChatEntity } from '../supabase/entities/telegram-chat.entity.ts';
-import { TelegramUpdateEntity } from '../supabase/entities/telegram-update.entity.ts';
-import { ScrapingSourceEntity } from '../supabase/entities/scraping-source.entity.ts';
-import { ScrapedDataEntity } from '../supabase/entities/scraped-data.entity.ts';
-import { FeatureConfigEntity } from '../supabase/entities/feature-config.entity.ts';
+// src/lib/db.ts — manual TypeORM DataSource (AppDataSource)
+//
+// Startup order
+// ─────────────
+// 1. detectAndInitDatabase() (imported from db-init.ts) runs first.
+//    It checks Bun.env for DATABASE_URL / SUPABASE_URL.
+//    If neither is set, it:
+//      • writes DATABASE_URL=sqlite to .env  (so env.ts picks it up everywhere)
+//      • purges any stale data/ directory
+//      • creates a temporary DataSource with synchronize: true → auto-creates tables
+//      • replays .workspace/db_init.sqllite.sql to add indexes / constraints
+//      • closes the temporary DataSource
+// 2. createDataSource(useSqlite) builds the AppDataSource that every entity
+//    and repository in the rest of the codebase imports and uses.
+//    For SQLite: synchronize: true (safe because schema has been seeded clean)
+//    For Postgres: synchronize: false (migrations are managed externally)
 
-function createDataSource(useSqlite: boolean): DataSource {
-  if (useSqlite) {
-    return new DataSource({
-      type: 'sqlite',
-      database: env.string('SQLITE_DATABASE', 'data/apollo.sqlite'),
-      synchronize: true,          // auto-create tables in local dev
-      logging: env.bool('NODE_ENV', false) ? ['query'] : false,
-      entities: [
-        UserEntity,
-        UserAuthProviderEntity,
-        UserSessionEntity,
-        TelegramBotEntity,
-        TelegramChatEntity,
-        TelegramUpdateEntity,
-        ScrapingSourceEntity,
-        ScrapedDataEntity,
-        FeatureConfigEntity,
-      ],
-    });
-  }
+import "reflect-metadata";
+import path from "node:path";
+import { DataSource } from "typeorm";
+import { env } from "../config/env.ts";
 
-  return new DataSource({
-    type: 'postgres',
-    url: env.string('DATABASE_URL') ?? '',
-    synchronize: false,
-    logging: env.bool('NODE_ENV', false) ? ['query'] : false,
-    extra: {
-      max: 20,
-      min: 5,
-      connectionTimeoutMillis: 10_000,
-      idleTimeoutMillis: 30_000,
-      keepAlive: true,
-    },
-    entities: [
-      UserEntity,
-      UserAuthProviderEntity,
-      UserSessionEntity,
-      TelegramBotEntity,
-      TelegramChatEntity,
-      TelegramUpdateEntity,
-      ScrapingSourceEntity,
-      ScrapedDataEntity,
-      FeatureConfigEntity,
-    ],
-  });
-}
+import {
+	FeatureConfigEntity,
+	ScrapedDataEntity,
+	ScrapingSourceEntity,
+	TelegramBotEntity,
+	TelegramChatEntity,
+	TelegramUpdateEntity,
+	UserAuthProviderEntity,
+	UserEntity,
+	UserSessionEntity,
+} from "../supabase/entities/index.ts";
 
-const useSqlite = !env.string('DATABASE_URL');
+import { detectAndInitDatabase } from "./db-init.ts";
 
-export const AppDataSource = createDataSource(useSqlite);
+// ── 1. auto-detect + auto-init (runs at module load, before AppDataSource) ───
+const _databaseMode = await detectAndInitDatabase();
 
+// Force Bun.env to match what detectAndInitDatabase wrote to .env
+const _DATABASE_URL = env.string("DATABASE_URL", "");
+
+// ── 2. build the real DataSource used by every repository in the codebase ────
+
+const useSqlite = !_DATABASE_URL || _DATABASE_URL === "sqlite";
+
+// Help TypeORM's SQLite dialect resolve the file before attempting to connect
 if (useSqlite) {
-  // Ensure the data directory exists so SQLite file can be created
-  const dbPath = env.string('SQLITE_DATABASE', 'data/apollo.sqlite');
-  const fs = await import('fs');
-  const dir = dbPath.split('/').slice(0, -1).join('/');
-  if (dir) fs.mkdirSync(dir, { recursive: true });
+	const dbPath = env.string("SQLITE_DATABASE", "data/apollo.sqlite");
+	const dir = path.dirname(dbPath);
+	try {
+		await import("node:fs").then((m) => m.mkdirSync(dir, { recursive: true }));
+	} catch {
+		/* directory already exists or permissions issue — non-fatal here */
+	}
 }
+
+function createDataSource(sqlite: boolean): DataSource {
+	if (sqlite) {
+		return new DataSource({
+			type: "sqlite",
+			database: env.string("SQLITE_DATABASE", "data/apollo.sqlite"),
+			synchronize: true, // safe: db-init seeded the schema first
+			logging: env.bool("NODE_ENV", false) ? ["query"] : false,
+			entities: [
+				UserEntity,
+				UserAuthProviderEntity,
+				UserSessionEntity,
+				TelegramBotEntity,
+				TelegramChatEntity,
+				TelegramUpdateEntity,
+				ScrapingSourceEntity,
+				ScrapedDataEntity,
+				FeatureConfigEntity,
+			],
+		});
+	}
+
+	return new DataSource({
+		type: "postgres",
+		url: env.string("DATABASE_URL") ?? "",
+		synchronize: false, // Postgres: migrations managed externally
+		logging: env.bool("NODE_ENV", false) ? ["query"] : false,
+		extra: {
+			max: 20,
+			min: 5,
+			connectionTimeoutMillis: 10_000,
+			idleTimeoutMillis: 30_000,
+			keepAlive: true,
+		},
+		entities: [
+			UserEntity,
+			UserAuthProviderEntity,
+			UserSessionEntity,
+			TelegramBotEntity,
+			TelegramChatEntity,
+			TelegramUpdateEntity,
+			ScrapingSourceEntity,
+			ScrapedDataEntity,
+			FeatureConfigEntity,
+		],
+	});
+}
+
+// ── 3. export the shared DataSource instance ────────────────────────────────
+export const AppDataSource = createDataSource(useSqlite);

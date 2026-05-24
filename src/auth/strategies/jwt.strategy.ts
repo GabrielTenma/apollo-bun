@@ -4,10 +4,10 @@
  * built-in JWT plugin; keep only the plain shape here.
  */
 export interface JwtPayload {
-  sub: string;
-  email: string;
-  roles: string[];
-  iat?: number;
-  exp?: number;
-  [key: string]: unknown;
+	sub: string;
+	email: string;
+	roles: string[];
+	iat?: number;
+	exp?: number;
+	[key: string]: unknown;
 }
