@@ -3,21 +3,22 @@
 //
 // Decision flow
 // ─────────────
-// 1) Read Bun.env (env vars injected by the Bun loader before this file runs).
+// 1) Read Bun.env (env vars injected by Docker --env-file, -e, Bun loader, etc.).
 // 2) Detect whether any Postgres / Supabase config is present:
 //      DATABASE_URL  — direct Postgres DSN
 //      SUPABASE_URL  — Supabase project URL (implies Postgres)
 //    If at least one is set → Postgres path, no auto-init needed.
-// 3) If nothing above is set → force SQLite:
-//      a) Write DATABASE_URL=sqlite to .env  (so env.ts / Bun.env picks it up)
-//      b) Upsert JWT_SECRET with a random v4 UUID when absent
-//      c) Purge stale data/ directory
-//      d) Create a throwaway TypeORM DataSource with synchronize: true so that
-//         every table defined by the entity classes is created automatically.
-//      e) Execute .workspace/db_init.sqllite.sql via native sqlite3 driver so
-//         indexes, UNIQUE constraints, and DEFAULT expressions are added cleanly
-//         (TypeORM's `ds.query()` cannot handle raw PRAGMA / ATTACH statements).
-//      f) Close the bootstrap connection; db.ts will open its own DataSource.
+// 3) If nothing above is set → force SQLite (local dev only):
+//      a) Write DATABASE_URL=sqlite to .env + Bun.env   (skipped when DOCKERIZED)
+//      b) Upsert JWT_SECRET (random UUID)               (skipped when DOCKERIZED)
+//      c) Purge + recreate data/ directory
+//      d) TypeORM synchronize + replay of .workspace/db_init.sqllite.sql
+//      e) Close bootstrap DataSource; db.ts opens the real one later.
+//
+// In Docker / container environments (DOCKERIZED=true or /.dockerenv):
+//   • No .env file is read or written at any time.
+//   • You must supply DATABASE_URL (or SUPABASE_*) + JWT_SECRET etc.
+//     exclusively via `docker run --env-file .env` or `-e KEY=val`.
 //
 // The SQLite DDL script lives in .workspace/ because it is a hand-maintained
 // reference file, not part of the TypeORM auto-sync path.
@@ -33,12 +34,29 @@ const DATA_DIR = path.join(PROJECT_ROOT, "data");
 const ENV_FILE = path.join(PROJECT_ROOT, ".env");
 const SQLITE_DDL = path.join(PROJECT_ROOT, ".workspace", "db_init.sqllite.sql");
 
+// When running under Docker (or Kubernetes, etc.) we must never write a .env file.
+// All secrets are supplied exclusively via --env-file / -e at container start.
+const SKIP_ENV_FILE_WRITES =
+	(Bun.env.DOCKERIZED ?? "").toLowerCase() === "true" ||
+	(Bun.env.SKIP_ENV_FILE_WRITES ?? "").toLowerCase() === "true" ||
+	(() => {
+		try {
+			// Standard Docker marker file (present in almost all containers)
+			return require("node:fs").existsSync("/.dockerenv");
+		} catch {
+			return false;
+		}
+	})();
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 /**
  * Load key=value pairs from `.env` into `Bun.env` at process start.
  * Only keys not already present in Bun.env are written so that
- * externally-injected env vars (Docker, CI) are never clobbered.
+ * externally-injected env vars (Docker --env-file, -e, CI, etc.) are never clobbered.
+ *
+ * Under DOCKERIZED / container environments the file is typically absent;
+ * all configuration arrives via Docker environment injection.
  */
 async function loadDotEnv(): Promise<void> {
 	try {
@@ -61,11 +79,9 @@ async function loadDotEnv(): Promise<void> {
  * Write or update a single `KEY=VALUE` in `.env`, then mirror the value
  * into `Bun.env` immediately.
  *
- * @param key       Env var name
- * @param value     Value to write (ignored when forceNonEmpty is used
- *                  and the var is already non-empty)
- * @param forceNonEmpty When `true` and Bun.env[key] is falsy, a UUID is
- *                  generated automatically before writing.
+ * In containerized environments (DOCKERIZED=true or /.dockerenv present)
+ * filesystem writes are skipped — all configuration must arrive via
+ * Docker --env-file / -e at `docker run` time.
  */
 async function upsertEnvVar(
 	key: string,
@@ -75,6 +91,13 @@ async function upsertEnvVar(
 	if (forceNonEmpty && !Bun.env[key]) {
 		value = crypto.randomUUID();
 	}
+
+	// Never mutate .env on disk when running in Docker / pure-env injection mode.
+	if (SKIP_ENV_FILE_WRITES) {
+		Bun.env[key] = value;
+		return;
+	}
+
 	let raw = "";
 	try {
 		raw = await fs.readFile(ENV_FILE, "utf-8");
@@ -242,14 +265,16 @@ function replaySqlliteDDL(
  * DATABASE_URL or SUPABASE_URL present ──→ Postgres path, return `'postgres'`
  * Neither present                       ──→ Force SQLite, return `'sqlite'`
  *
- * SQLite force-init steps:
- *  1. upsert `DATABASE_URL=sqlite` into `.env` + `Bun.env`
- *  2. upsert `JWT_SECRET=<uuid>` into `.env` + `Bun.env` (only when absent)
- *  3. purge `data/` directory
- *  4. recreate `data/`
- *  5. synchronize:true → creates tables
- *  6. native sqlite3 replay of `.workspace/db_init.sqllite.sql`
- *  7. close bootstrap DataSource
+ * SQLite force-init steps (local dev only):
+ *  1. upsert `DATABASE_URL=sqlite` into `.env` + `Bun.env`   (skipped under DOCKERIZED)
+ *  2. upsert `JWT_SECRET=<uuid>` into `.env` + `Bun.env`     (skipped under DOCKERIZED)
+ *  3. purge + recreate `data/`
+ *  4. synchronize:true → creates tables
+ *  5. native sqlite3 replay of `.workspace/db_init.sqllite.sql`
+ *  6. close bootstrap DataSource
+ *
+ * When DOCKERIZED=true (set in Dockerfile) or /.dockerenv exists, no .env file
+ * is ever read or written — all values must be supplied via Docker --env-file.
  *
  * @returns database mode selected by this run
  */
@@ -265,14 +290,11 @@ export async function detectAndInitDatabase(): Promise<"sqlite" | "postgres"> {
 
 	if (hasRealPostgresUrl || hasSupabase) return "postgres";
 
-	// ── force SQLite ───────────────────────────────────────────────────────────
+	// ── force SQLite (local development only) ──────────────────────────────────
 	await upsertEnvVar("DATABASE_URL", "sqlite");
 
 	// Auto-generate JWT_SECRET when absent so that `app.ts`'s jwt plugin
-	// (`.use(jwt({ secret: env.string('JWT_SECRET') ?? '' }))`) never receives
-	// an empty string and throws: "Secret can't be empty".
-	// On re-runs the key may already be in .env / Bun.env; upsertEnvVar handles
-	// that by leaving an existing non-empty value untouched.
+	// never receives an empty string.
 	await upsertEnvVar("JWT_SECRET", crypto.randomUUID(), true);
 
 	await purgeDataDir();

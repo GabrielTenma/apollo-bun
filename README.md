@@ -13,12 +13,12 @@
   <hr>
 </div>
 
-![Branches](https://www.shieldcn.dev/github/branches/GabrielTenma/apollo-bun.svg?variant=ghost&size=xs)
+![Branches](https://www.shieldcn.dev/github/branches/GabrielTenma/apollo-bun.svg?variant=secondary&size=xs)
 ![Last commit](https://www.shieldcn.dev/github/last-commit/GabrielTenma/apollo-bun.svg?variant=secondary&size=xs)
 ![Release](https://www.shieldcn.dev/github/release/GabrielTenma/apollo-bun.svg?size=xs&variant=secondary)
 ![CI](https://www.shieldcn.dev/github/ci/GabrielTenma/apollo-bun.svg?variant=secondary&size=xs)
-![License](https://www.shieldcn.dev/github/license/GabrielTenma/apollo-bun.svg?variant=ghost&size=xs)
-![Agent-friendly AGENTS.md](https://www.shieldcn.dev/badge/Agent--friendly-AGENTS.md-D97757.svg?variant=ghost&size=xs)
+![License](https://www.shieldcn.dev/github/license/GabrielTenma/apollo-bun.svg?variant=secondary&size=xs)
+![Agent-friendly AGENTS.md](https://www.shieldcn.dev/badge/Agent--friendly-AGENTS.md-D97757.svg?variant=secondary&size=xs)
 
 
 ## Overview
@@ -80,6 +80,8 @@ Build and run with Docker. The image is based on `oven/bun:1-distroless`.
 docker build -t apollo .
 docker run -p 3000:3000 --env-file .env apollo
 ```
+
+For **publishing public releases to Docker Hub**, detailed tagging, push workflows, and CI examples, see [DOCKER_RELEASE.md](DOCKER_RELEASE.md).
 
 Environment variables are passed via `--env-file` or `-e`. The frontend is baked into the image at build time (served by Elysia `file()` from `/`).
 
