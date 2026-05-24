@@ -74,16 +74,27 @@ The Elysia server serves the React frontend from `http://localhost:3000/` using 
 
 ## Docker
 
-Build and run with Docker. The image is based on `oven/bun:1-distroless`.
+The image uses a multi-stage build based on `oven/bun:1` (Debian-based).
+
+**Critical prerequisite** — run this on the host first:
+
+```bash
+bun run web:build
+```
+
+Then build and run:
 
 ```bash
 docker build -t apollo .
 docker run -p 3000:3000 --env-file .env apollo
 ```
 
-Environment variables are passed via `--env-file` or `-e`. The frontend is baked into the image at build time (served by Elysia `file()` from `/`).
-
-Exposed port: **3000**. Health check: `GET /health` → `{"status":"ok"}`.
+- The React frontend must be pre-built on the host (the Dockerfile does **not** run `bun run web:build`).
+- All configuration (`OPENROUTER_API_KEY`, `DATABASE_URL`, etc.) is supplied only at runtime via `--env-file` or `-e`. No `.env` file exists inside the image.
+- If `DATABASE_URL` is provided, `db_init.sql` is executed automatically on container start.
+- Pre-built frontend is served from `/` by Elysia.
+- Built-in `HEALTHCHECK` on `GET /health`.
+- Exposed port: **3000**.
 
 
 ## Preview
