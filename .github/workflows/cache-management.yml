@@ -1,0 +1,147 @@
+name: Cache Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Cache operation'
+        required: true
+        default: 'warm-bun-and-playwright'
+        type: choice
+        options:
+          - warm-bun-and-playwright
+          - warm-bun-only
+          - warm-playwright-only
+          - force-refresh-bun-and-playwright   # local clear + fresh install + save under suffixed key (newest prefix match wins in restore-keys)
+          - clear-local-bun-cache
+          - clear-local-playwright-cache
+          - clear-local-all-caches
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  manage:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Get bun.lock hash
+        id: lock
+        run: |
+          echo "hash=$(hashFiles('**/bun.lock'))" >> $GITHUB_OUTPUT
+
+      # ============================================
+      # BUN INSTALL CACHE (~/.bun/install/cache)
+      # Keyed the same as .github/workflows/playwright.yml
+      # ============================================
+      - name: Restore Bun cache
+        id: restore-bun
+        if: |
+          inputs.operation == 'warm-bun-and-playwright' ||
+          inputs.operation == 'warm-bun-only' ||
+          inputs.operation == 'force-refresh-bun-and-playwright'
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ steps.lock.outputs.hash }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Clear local Bun cache
+        if: |
+          inputs.operation == 'force-refresh-bun-and-playwright' ||
+          inputs.operation == 'clear-local-bun-cache' ||
+          inputs.operation == 'clear-local-all-caches'
+        run: rm -rf ~/.bun/install/cache
+
+      - name: bun install (populates cache)
+        if: |
+          inputs.operation != 'clear-local-playwright-cache' &&
+          inputs.operation != 'clear-local-bun-cache' &&
+          inputs.operation != 'clear-local-all-caches'
+        run: bun install
+
+      - name: Save Bun cache (only on miss or force-refresh)
+        if: |
+          (inputs.operation == 'warm-bun-and-playwright' || inputs.operation == 'warm-bun-only') &&
+          steps.restore-bun.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ steps.lock.outputs.hash }}
+
+      - name: Save Bun cache (force-refresh uses suffixed key so newest wins via restore-keys)
+        if: inputs.operation == 'force-refresh-bun-and-playwright'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ steps.lock.outputs.hash }}-force-${{ github.run_number }}
+
+      # ============================================
+      # PLAYWRIGHT BROWSERS (~/.cache/ms-playwright)
+      # Keyed the same as .github/workflows/playwright.yml
+      # ============================================
+      - name: Restore Playwright cache
+        id: restore-pw
+        if: |
+          inputs.operation == 'warm-bun-and-playwright' ||
+          inputs.operation == 'warm-playwright-only' ||
+          inputs.operation == 'force-refresh-bun-and-playwright'
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-bun-${{ steps.lock.outputs.hash }}
+          restore-keys: |
+            playwright-${{ runner.os }}-bun-
+
+      - name: Clear local Playwright browsers
+        if: |
+          inputs.operation == 'force-refresh-bun-and-playwright' ||
+          inputs.operation == 'clear-local-playwright-cache' ||
+          inputs.operation == 'clear-local-all-caches'
+        run: rm -rf ~/.cache/ms-playwright
+
+      - name: Install Playwright browsers
+        if: |
+          inputs.operation == 'warm-bun-and-playwright' ||
+          inputs.operation == 'warm-playwright-only' ||
+          inputs.operation == 'force-refresh-bun-and-playwright'
+        run: |
+          if [ -d "$HOME/.cache/ms-playwright" ]; then
+            bunx playwright install
+          else
+            bunx playwright install --with-deps
+          fi
+
+      - name: Save Playwright cache (on miss)
+        if: |
+          (inputs.operation == 'warm-bun-and-playwright' || inputs.operation == 'warm-playwright-only') &&
+          steps.restore-pw.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-bun-${{ steps.lock.outputs.hash }}
+
+      - name: Save Playwright cache (force-refresh uses suffixed key)
+        if: inputs.operation == 'force-refresh-bun-and-playwright'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-bun-${{ steps.lock.outputs.hash }}-force-${{ github.run_number }}
+
+      - name: Cache summary
+        run: |
+          echo "=== Cache Management Complete ==="
+          echo "Operation: ${{ inputs.operation }}"
+          echo "Bun cache present: $([ -d ~/.bun/install/cache ] && echo 'yes' || echo 'no')"
+          echo "Playwright cache present: $([ -d ~/.cache/ms-playwright ] && echo 'yes' || echo 'no')"
+          echo ""
+          echo "Note: GitHub will keep the most recent cache entry matching the restore-keys prefixes."
+          echo "Force-refresh modes save under a '-force-<run_number>' suffix so they are preferred by restore-keys."
+          echo "To completely remove old cache entries, use the repository's Actions > Caches UI."
