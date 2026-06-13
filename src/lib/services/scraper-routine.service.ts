@@ -1,23 +1,15 @@
 import * as os from "node:os";
 import type { Repository } from "typeorm";
-import type { CnbcTarget } from "../../scraper/target/cnbc.target.ts";
-import type { CoinmarketCapTarget } from "../../scraper/target/coinmarketcap.target.ts";
-import type { FinancialJuiceTarget } from "../../scraper/target/financialjuice.target.ts";
-import type { InvestingTarget } from "../../scraper/target/investing.target.ts";
-import type { YahooFinanceTarget } from "../../scraper/target/yahoofinance.target.ts";
 import type { ScrapedDataEntity } from "../../supabase/entities/scraped-data.entity.ts";
 import type { MemoryKeyStore } from "../memory-key-store.ts";
 import type { RoutineService } from "../routine.service.ts";
 import type { ScraperService } from "./scraper.service.ts";
+import type { ScraperTargetRegistry } from "./scraper-target-registry.ts";
 
 export class ScraperRoutineService {
 	constructor(
 		public routineService: RoutineService,
-		public coinMarketCapTarget: CoinmarketCapTarget,
-		public yahooFinanceTarget: YahooFinanceTarget,
-		public financialJuiceTarget: FinancialJuiceTarget,
-		public cnbcTarget: CnbcTarget,
-		public investingTarget: InvestingTarget,
+		public scraperTargetRegistry: ScraperTargetRegistry,
 		public scraperService: ScraperService,
 		public scrapedDataRepository: Repository<ScrapedDataEntity>,
 		public constants: { appName: string; scrapedContentStore: MemoryKeyStore },
@@ -29,19 +21,19 @@ export class ScraperRoutineService {
 			return;
 		}
 
+		const enabledTargets = this.scraperTargetRegistry.getEnabledTargets();
+		if (!enabledTargets.length) {
+			console.log("No scraper targets enabled, skipping scraper routine");
+			return;
+		}
+
 		this.routineService.startRoutine(
 			"scraper-routine",
 			async () => {
 				console.log("Scraper collector routine executed");
 				const scrapedContentStore = this.constants.scrapedContentStore;
 
-				const scrapeOptions = [
-					this.coinMarketCapTarget.getOptions(),
-					this.yahooFinanceTarget.getOptions(),
-					this.financialJuiceTarget.getOptions(),
-					this.cnbcTarget.getOptions(),
-					this.investingTarget.getOptions(),
-				];
+				const scrapeOptions = enabledTargets.map((t) => t.getOptions());
 				const scrapeAllResult = await this.scraperService.scrapeMultiple(
 					scrapeOptions,
 					Math.max(1, Math.floor(os.cpus().length / 2)),
@@ -55,39 +47,22 @@ export class ScraperRoutineService {
 					);
 					return;
 				}
-				scrapedContentStore.set(
-					"coinmarketcap",
-					this.coinMarketCapTarget.parsePriceList(
-						scrapeAllResult[0].content || "",
-					),
-					120_000, // 2-min TTL so stale data is evicted if the routine stops
-				);
-				scrapedContentStore.set(
-					"yahoofinance",
-					this.yahooFinanceTarget.parseNewsItems(
-						scrapeAllResult[1].content || "",
-					),
-					120_000,
-				);
-				scrapedContentStore.set(
-					"financialjuice",
-					this.financialJuiceTarget.parseNewsItems(
-						scrapeAllResult[2].content || "",
-					),
-					120_000,
-				);
-				scrapedContentStore.set(
-					"cnbc",
-					this.cnbcTarget.parseNewsItems(scrapeAllResult[3].content || ""),
-					120_000,
-				);
-				scrapedContentStore.set(
-					"investing",
-					this.investingTarget.parseNewsItems(scrapeAllResult[4].content || ""),
-					120_000,
-				);
 
-				console.log(`scrape routine done ${scrapeAllResult.length}`);
+				for (let i = 0; i < enabledTargets.length; i++) {
+					const target = enabledTargets[i];
+					const html = scrapeAllResult[i]?.content;
+					if (html) {
+						scrapedContentStore.set(
+							target.storeKey,
+							target.parse(html),
+							120_000,
+						);
+					}
+				}
+
+				console.log(
+					`scrape routine done ${scrapeAllResult.length}/${enabledTargets.length}`,
+				);
 			},
 			20000,
 		);
