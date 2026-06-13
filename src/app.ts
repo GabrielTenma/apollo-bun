@@ -37,6 +37,7 @@ import { telegramRoutes } from "./routes/v1/telegram.route.ts";
 import { CnbcTarget } from "./scraper/target/cnbc.target.ts";
 import { CoinmarketCapTarget } from "./scraper/target/coinmarketcap.target.ts";
 import { FinancialJuiceTarget } from "./scraper/target/financialjuice.target.ts";
+import { InvestingTarget } from "./scraper/target/investing.target.ts";
 import { YahooFinanceTarget } from "./scraper/target/yahoofinance.target.ts";
 import { ScrapedDataEntity } from "./supabase/entities/scraped-data.entity.ts";
 import { ScrapingSourceEntity } from "./supabase/entities/scraping-source.entity.ts";
@@ -62,6 +63,7 @@ const financialJuiceTarget = new FinancialJuiceTarget(scraperService);
 const yahooFinanceTarget = new YahooFinanceTarget(scraperService);
 const coinMarketCapTarget = new CoinmarketCapTarget(scraperService);
 const cnbcTarget = new CnbcTarget(scraperService);
+const investingTarget = new InvestingTarget(scraperService);
 
 // ─── TypeORM bootstrap ─────────────────────────────────────────────
 await AppDataSource.initialize().catch((err: any) =>
@@ -228,6 +230,7 @@ new ScraperRoutineService(
 	yahooFinanceTarget,
 	financialJuiceTarget,
 	cnbcTarget,
+	investingTarget,
 	scraperService,
 	scrapedDataRepo,
 	{ appName: "apollo", scrapedContentStore },
