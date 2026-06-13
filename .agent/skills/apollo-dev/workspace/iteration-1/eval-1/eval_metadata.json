@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "add-reuters-scraper",
+  "prompt": "I need to add a new scraper for Reuters news. Can you scaffold the scraper target file, wire it into the scraper routine, and add the MemoryKeyStore route? The URL is https://www.reuters.com/news/world and I want to scrape article headlines with links and timestamps. Use the selector 'article[data-testid=\"headline\"]' for each item, with h3 for the title and time for the timestamp.",
+  "assertions": []
+}

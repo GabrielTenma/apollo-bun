@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "add-market-data-route",
+  "prompt": "I want to add a new route group for a market-data API under /api/v1/market-data. It should have a GET /api/v1/market-data/summary endpoint that reads from MemoryKeyStore and returns the latest scraped financialjuice data. Create the route file, add the barrel export, and wire it into app.ts.",
+  "assertions": []
+}

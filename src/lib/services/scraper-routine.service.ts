@@ -1,7 +1,9 @@
 import * as os from "node:os";
 import type { Repository } from "typeorm";
+import type { CnbcTarget } from "../../scraper/target/cnbc.target.ts";
 import type { CoinmarketCapTarget } from "../../scraper/target/coinmarketcap.target.ts";
 import type { FinancialJuiceTarget } from "../../scraper/target/financialjuice.target.ts";
+import type { InvestingTarget } from "../../scraper/target/investing.target.ts";
 import type { YahooFinanceTarget } from "../../scraper/target/yahoofinance.target.ts";
 import type { ScrapedDataEntity } from "../../supabase/entities/scraped-data.entity.ts";
 import type { MemoryKeyStore } from "../memory-key-store.ts";
@@ -14,6 +16,8 @@ export class ScraperRoutineService {
 		public coinMarketCapTarget: CoinmarketCapTarget,
 		public yahooFinanceTarget: YahooFinanceTarget,
 		public financialJuiceTarget: FinancialJuiceTarget,
+		public cnbcTarget: CnbcTarget,
+		public investingTarget: InvestingTarget,
 		public scraperService: ScraperService,
 		public scrapedDataRepository: Repository<ScrapedDataEntity>,
 		public constants: { appName: string; scrapedContentStore: MemoryKeyStore },
@@ -35,6 +39,8 @@ export class ScraperRoutineService {
 					this.coinMarketCapTarget.getOptions(),
 					this.yahooFinanceTarget.getOptions(),
 					this.financialJuiceTarget.getOptions(),
+					this.cnbcTarget.getOptions(),
+					this.investingTarget.getOptions(),
 				];
 				const scrapeAllResult = await this.scraperService.scrapeMultiple(
 					scrapeOptions,
@@ -68,6 +74,16 @@ export class ScraperRoutineService {
 					this.financialJuiceTarget.parseNewsItems(
 						scrapeAllResult[2].content || "",
 					),
+					120_000,
+				);
+				scrapedContentStore.set(
+					"cnbc",
+					this.cnbcTarget.parseNewsItems(scrapeAllResult[3].content || ""),
+					120_000,
+				);
+				scrapedContentStore.set(
+					"investing",
+					this.investingTarget.parseNewsItems(scrapeAllResult[4].content || ""),
 					120_000,
 				);
 

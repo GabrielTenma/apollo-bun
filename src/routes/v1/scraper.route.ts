@@ -57,6 +57,14 @@ const scraperRoutes = new Elysia({
 		success: true,
 		data: scrapedContentStore.get("coinmarketcap"),
 	}))
+	.get("/cnbc", () => ({
+		success: true,
+		data: scrapedContentStore.get("cnbc"),
+	}))
+	.get("/investing", () => ({
+		success: true,
+		data: scrapedContentStore.get("investing"),
+	}))
 
 	// GET  /api/v1/scraper/sources   -- list all scraping sources via TypeORM
 	.get("/sources", async () => {

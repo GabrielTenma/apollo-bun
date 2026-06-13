@@ -30,17 +30,20 @@ export class OpenrouterRoutineService {
 				const financialJuice = scrapedContentStore.get("financialjuice");
 				const yahooFinance = scrapedContentStore.get("yahoofinance");
 				const coinmarketCap = scrapedContentStore.get("coinmarketcap");
+				const cnbc = scrapedContentStore.get("cnbc");
 
 				const isStoreHasContents =
 					financialJuice !== undefined &&
 					yahooFinance !== undefined &&
-					coinmarketCap !== undefined;
+					coinmarketCap !== undefined &&
+					cnbc !== undefined;
 
 				if (isStoreHasContents) {
 					const chatCompletion = await this.financialAgentService.queryChat({
 						financialJuiceContent: JSON.stringify(financialJuice || ""),
 						yahooFinanceContent: JSON.stringify(yahooFinance || ""),
 						coinmarketCapContent: JSON.stringify(coinmarketCap || ""),
+						cnbcContent: JSON.stringify(cnbc || ""),
 						maxTextLength: 1000,
 						ideaWordsLength: 300,
 						riskReminder: 3,
