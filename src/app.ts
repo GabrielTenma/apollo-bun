@@ -21,6 +21,7 @@ import { OpenRouterService } from "./lib/services/openrouter.service.ts";
 import { OpenrouterRoutineService } from "./lib/services/openrouter-routine.service.ts";
 import { ScraperService } from "./lib/services/scraper.service.ts";
 import { ScraperRoutineService } from "./lib/services/scraper-routine.service.ts";
+import { ScraperTargetRegistry } from "./lib/services/scraper-target-registry.ts";
 import { SupabaseService } from "./lib/services/supabase.service.ts";
 import { SupabaseRoutineService } from "./lib/services/supabase-routine.service.ts";
 import { TelegramService } from "./lib/services/telegram.service.ts";
@@ -31,7 +32,7 @@ import { telegramPlugin } from "./plugins/telegramPlugin.ts";
 
 import { authRoutes } from "./routes/v1/auth.route.ts";
 import { openrouterRoutes } from "./routes/v1/openrouter.route.ts";
-import { scraperRoutes } from "./routes/v1/scraper.route.ts";
+import { createScraperRoutes } from "./routes/v1/scraper.route.ts";
 import { supabaseRoutes } from "./routes/v1/supabase.route.ts";
 import { telegramRoutes } from "./routes/v1/telegram.route.ts";
 import { CnbcTarget } from "./scraper/target/cnbc.target.ts";
@@ -64,6 +65,33 @@ const yahooFinanceTarget = new YahooFinanceTarget(scraperService);
 const coinMarketCapTarget = new CoinmarketCapTarget(scraperService);
 const cnbcTarget = new CnbcTarget(scraperService);
 const investingTarget = new InvestingTarget(scraperService);
+
+const scraperTargetRegistry = new ScraperTargetRegistry();
+scraperTargetRegistry.register(
+	"coinmarketcap",
+	() => coinMarketCapTarget.getOptions(),
+	(html: string) => coinMarketCapTarget.parsePriceList(html),
+);
+scraperTargetRegistry.register(
+	"financialjuice",
+	() => financialJuiceTarget.getOptions(),
+	(html: string) => financialJuiceTarget.parseNewsItems(html),
+);
+scraperTargetRegistry.register(
+	"yahoofinance",
+	() => yahooFinanceTarget.getOptions(),
+	(html: string) => yahooFinanceTarget.parseNewsItems(html),
+);
+scraperTargetRegistry.register(
+	"cnbc",
+	() => cnbcTarget.getOptions(),
+	(html: string) => cnbcTarget.parseNewsItems(html),
+);
+scraperTargetRegistry.register(
+	"investing",
+	() => investingTarget.getOptions(),
+	(html: string) => investingTarget.parseNewsItems(html),
+);
 
 // ─── TypeORM bootstrap ─────────────────────────────────────────────
 await AppDataSource.initialize().catch((err: any) =>
@@ -205,7 +233,7 @@ export const app = new Elysia()
 			.use(telegramRoutes)
 
 			// scraper: public endpoints + background write targets
-			.use(scraperRoutes)
+			.use(createScraperRoutes(scrapedContentStore, scraperTargetRegistry))
 
 			// supabase: direct CRUD passthrough (admin)
 			.use(supabaseRoutes),
@@ -226,20 +254,19 @@ app.listen(PORT, () => console.log(`Apollo Elysia on :${PORT}`));
 // ─── background routines ───────────────────────────────────────────
 new ScraperRoutineService(
 	routineService,
-	coinMarketCapTarget,
-	yahooFinanceTarget,
-	financialJuiceTarget,
-	cnbcTarget,
-	investingTarget,
+	scraperTargetRegistry,
 	scraperService,
 	scrapedDataRepo,
 	{ appName: "apollo", scrapedContentStore },
 ).start();
 
-new OpenrouterRoutineService(routineService, financialAgent, scrapedDataRepo, {
-	appName: "apollo",
-	scrapedContentStore,
-}).start();
+new OpenrouterRoutineService(
+	routineService,
+	financialAgent,
+	scrapedDataRepo,
+	{ appName: "apollo", scrapedContentStore },
+	scraperTargetRegistry,
+).start();
 
 new SupabaseRoutineService(routineService, supabaseService2).start();
 

@@ -36,9 +36,11 @@ src/
 ### Data Flow
 
 ```
-Scraping Targets (Playwright, every 20s)
-  → MemoryKeyStore (financialjuice, yahoofinance, coinmarketcap, TTL: 120s)
-  → OpenRouter AI (FinancialAgentService → Markdown analysis)
+SCRAPER_TARGETS env var (default: coinmarketcap,financialjuice)
+  → ScraperTargetRegistry (all 5 targets registered, only enabled ones scraped)
+  → Scraping Targets (Playwright, every 20s)
+  → MemoryKeyStore (per enabled target key, TTL: 120s)
+  → OpenRouter AI (FinancialAgentService → dynamic prompt based on available data)
   → MemoryKeyStore (completion, completion-previous)
   → TypeORM (ScrapedDataEntity persistence)
   → GET /api/v1/openrouter/completion  →  React frontend
@@ -50,7 +52,8 @@ Scraping Targets (Playwright, every 20s)
 - **Services are plain classes** with constructor injection. Instantiated once at module scope in `app.ts`. Exposed to route handlers via `.decorate()` on the Elysia app instance.
 - **TypeORM entities** use explicit column types (`@Column({ type: 'varchar' })`) — no `emitDecoratorMetadata` needed. snake_case DB columns → camelCase TS properties.
 - **All internal imports use explicit `.ts` extensions** (Bundler module resolution).
-- **Scraper targets** are classes with a `getOptions(): ScrapeOptions` method and a `parse*(html)` method using cheerio.
+- **Scraper targets** are classes with a `getOptions(): ScrapeOptions` method and a `parse*(html)` method using cheerio. Targets are registered in `ScraperTargetRegistry` in `app.ts`; only targets listed in `SCRAPER_TARGETS` env var are scraped by the background routine.
+- **ScraperTargetRegistry** (`src/lib/services/scraper-target-registry.ts`) is the single source of truth for which targets are enabled. The scraper routine, openrouter routine, and scraper routes all read from the same registry.
 - **Routines** are separate `*-routine.service.ts` classes with a `start()` method.
 - **MemoryKeyStore** is the shared in-memory state between scraper routines and openrouter routines. Keys have TTL (120s for scraped data).
 - **evlog** for structured logging: `log.error({ error: e.message, route })`.
@@ -105,9 +108,10 @@ Then update these files:
 
 | File | Change |
 |---|---|
-| `src/app.ts` | Import `MyTarget`, instantiate after existing targets, pass to `ScraperRoutineService` constructor at line ~223 |
-| `src/lib/services/scraper-routine.service.ts` | Add `MyTarget` to constructor params, add `getOptions()` to `scrapeOptions` array, store parsed result with `scrapedContentStore.set('mykey', parsed, 120_000)` |
-| `src/routes/v1/scraper.route.ts` | Add `GET /mykey` route reading from `scrapedContentStore.get('mykey')` |
+| `src/app.ts` | Import `MyTarget`, instantiate after existing targets, register in `scraperTargetRegistry` via `.register("mykey", () => myTarget.getOptions(), (html) => myTarget.parseItems(html))` |
+| `src/lib/services/scraper-routine.service.ts` | No changes needed — it iterates over the registry automatically |
+| `src/routes/v1/scraper.route.ts` | No changes needed — `GET /{target}` routes are generated dynamically from the registry |
+| `.env` / `.env.example` | Add `mykey` to the `SCRAPER_TARGETS` list if it should be enabled by default |
 
 ### 2. Add a New Route Group
 
@@ -348,6 +352,7 @@ scrapedContentStore.set("mykey", value);
 | Type augmentation | `src/types/apollo.d.ts` |
 | Env helpers | `src/config/env.ts` |
 | MemoryKeyStore | `src/lib/memory-key-store.ts` |
+| ScraperTargetRegistry | `src/lib/services/scraper-target-registry.ts` |
 | Response util | `src/lib/response.util.ts` |
 | Routine service | `src/lib/routine.service.ts` |
 | AGENTS.md | `AGENTS.md` |
@@ -357,6 +362,47 @@ scrapedContentStore.set("mykey", value);
 - All env vars read via `Bun.env` through `src/config/env.ts`: `env.string("KEY", "default")`, `env.number("KEY", 42)`, `env.bool("KEY")`.
 - Routine global switch: `ROUTINE_ENABLED=true|false` (default `false`).
 - Execution mode: `ROUTINE_EXECUTION_MODE=wait|skip|overlap` (default `wait`).
+- Scraper target selection: `SCRAPER_TARGETS=coinmarketcap,financialjuice` (comma-separated, case-insensitive; default `coinmarketcap,financialjuice`).
+
+## ScraperTargetRegistry
+
+Located at `src/lib/services/scraper-target-registry.ts`. All 5 targets (`coinmarketcap`, `financialjuice`, `yahoofinance`, `cnbc`, `investing`) are registered in `app.ts` at module scope. The registry reads `SCRAPER_TARGETS` from `Bun.env` at construction time to determine which targets are active.
+
+```typescript
+const scraperTargetRegistry = new ScraperTargetRegistry();
+scraperTargetRegistry.register(
+  "mykey",
+  () => myTarget.getOptions(),
+  (html: string) => myTarget.parseItems(html),
+);
+```
+
+The registry provides:
+- `getEnabledTargets()` — targets matching `SCRAPER_TARGETS` list
+- `getEnabledNames()` — just the names
+- `getAllTargets()` — every registered target (for auto-discovery)
+- `isEnabled(name)` — check if a specific target is active
+- `getDescription(name)` — human-readable description of each target
+
+## Dynamic Scraper Routes
+
+`src/routes/v1/scraper.route.ts` exports `createScraperRoutes(sharedStore, registry)` — a factory that creates the Elysia route group. `GET /api/v1/scraper/{target}` routes are generated per enabled target from the registry, reading from the shared MemoryKeyStore.
+
+Add `GET /api/v1/scraper/targets` to list all available and enabled targets:
+
+```json
+{
+  "success": true,
+  "data": {
+    "enabled": [{ "name": "coinmarketcap", "description": "..." }],
+    "available": [{ "name": "coinmarketcap", "description": "..." }]
+  }
+}
+```
+
+## Dynamic AI Prompt
+
+The `FinancialAgentService.getPrompt()` in `src/lib/services/financial-agent.service.ts` dynamically builds the analysis prompt based on which data sources are available. Sections like USD IDR Currency Impact and XAU (Gold) Impact are only included when FinancialJuice or Yahoo Finance data is present.
 
 ## Frontend
 
