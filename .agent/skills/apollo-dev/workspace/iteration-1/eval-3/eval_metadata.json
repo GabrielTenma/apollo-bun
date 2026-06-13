@@ -1,0 +1,6 @@
+{
+  "eval_id": 3,
+  "eval_name": "add-market-sentiment-entity",
+  "prompt": "I need to add an entity for storing market sentiment analysis results. The table should be called 'market_sentiment' with fields: id (uuid), source (varchar), sentiment_score (float), summary (text), analyzed_at (varchar timestamp), and asset_class (varchar). Create the entity file, add it to the barrel export, register it in db.ts and db-init.ts.",
+  "assertions": []
+}

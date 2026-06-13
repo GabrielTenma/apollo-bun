@@ -1,0 +1,6 @@
+{
+  "eval_id": 4,
+  "eval_name": "add-alert-service",
+  "prompt": "Add a new service called AlertService that sends notifications when market thresholds are crossed. It should read from MemoryKeyStore and have a method checkThresholds() that compares current prices against configured thresholds from env vars. Create the service, instantiate it in app.ts, decorate it, and add the type to apollo.d.ts.",
+  "assertions": []
+}

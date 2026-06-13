@@ -2,6 +2,7 @@ export interface PromptConfig {
 	financialJuiceContent: string;
 	yahooFinanceContent: string;
 	coinmarketCapContent: string;
+	cnbcContent: string;
 	maxTextLength?: number;
 	ideaWordsLength?: number;
 	riskReminder?: number;
