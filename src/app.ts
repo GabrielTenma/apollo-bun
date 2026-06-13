@@ -34,6 +34,7 @@ import { openrouterRoutes } from "./routes/v1/openrouter.route.ts";
 import { scraperRoutes } from "./routes/v1/scraper.route.ts";
 import { supabaseRoutes } from "./routes/v1/supabase.route.ts";
 import { telegramRoutes } from "./routes/v1/telegram.route.ts";
+import { CnbcTarget } from "./scraper/target/cnbc.target.ts";
 import { CoinmarketCapTarget } from "./scraper/target/coinmarketcap.target.ts";
 import { FinancialJuiceTarget } from "./scraper/target/financialjuice.target.ts";
 import { YahooFinanceTarget } from "./scraper/target/yahoofinance.target.ts";
@@ -60,6 +61,7 @@ const financialAgent = new FinancialAgentService(openRouterService);
 const financialJuiceTarget = new FinancialJuiceTarget(scraperService);
 const yahooFinanceTarget = new YahooFinanceTarget(scraperService);
 const coinMarketCapTarget = new CoinmarketCapTarget(scraperService);
+const cnbcTarget = new CnbcTarget(scraperService);
 
 // ─── TypeORM bootstrap ─────────────────────────────────────────────
 await AppDataSource.initialize().catch((err: any) =>
@@ -225,6 +227,7 @@ new ScraperRoutineService(
 	coinMarketCapTarget,
 	yahooFinanceTarget,
 	financialJuiceTarget,
+	cnbcTarget,
 	scraperService,
 	scrapedDataRepo,
 	{ appName: "apollo", scrapedContentStore },

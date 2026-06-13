@@ -1,0 +1,46 @@
+{
+  "skill_name": "apollo-dev",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to add a new scraper for Reuters news. Can you scaffold the scraper target file, wire it into the scraper routine, and add the MemoryKeyStore route? The URL is https://www.reuters.com/news/world and I want to scrape article headlines with links and timestamps. Use the selector 'article[data-testid=\"headline\"]' for each item, with h3 for the title and time for the timestamp.",
+      "expected_output": "Creates src/scraper/target/reuters.target.ts, updates src/lib/services/scraper-routine.service.ts to include the new target, and adds a GET /reuters route to src/routes/v1/scraper.route.ts",
+      "files": [
+        "src/scraper/target/reuters.target.ts",
+        "src/lib/services/scraper-routine.service.ts",
+        "src/routes/v1/scraper.route.ts"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to add a new route group for a market-data API under /api/v1/market-data. It should have a GET /api/v1/market-data/summary endpoint that reads from MemoryKeyStore and returns the latest scraped financialjuice data. Create the route file, add the barrel export, and wire it into app.ts.",
+      "expected_output": "Creates src/routes/v1/market-data.route.ts, updates src/routes/index.ts, and updates src/app.ts to register the new route group",
+      "files": [
+        "src/routes/v1/market-data.route.ts",
+        "src/routes/index.ts",
+        "src/app.ts"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need to add an entity for storing market sentiment analysis results. The table should be called 'market_sentiment' with fields: id (uuid), source (varchar), sentiment_score (float), summary (text), analyzed_at (varchar timestamp), and asset_class (varchar). Create the entity file, add it to the barrel export, register it in db.ts and db-init.ts.",
+      "expected_output": "Creates src/supabase/entities/market-sentiment.entity.ts, updates src/supabase/entities/index.ts, src/lib/db.ts, and src/lib/db-init.ts",
+      "files": [
+        "src/supabase/entities/market-sentiment.entity.ts",
+        "src/supabase/entities/index.ts",
+        "src/lib/db.ts",
+        "src/lib/db-init.ts"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Add a new service called AlertService that sends notifications when market thresholds are crossed. It should read from MemoryKeyStore and have a method checkThresholds() that compares current prices against configured thresholds from env vars. Create the service, instantiate it in app.ts, decorate it, and add the type to apollo.d.ts.",
+      "expected_output": "Creates src/lib/services/alert.service.ts, updates src/app.ts, and updates src/types/apollo.d.ts",
+      "files": [
+        "src/lib/services/alert.service.ts",
+        "src/app.ts",
+        "src/types/apollo.d.ts"
+      ]
+    }
+  ]
+}

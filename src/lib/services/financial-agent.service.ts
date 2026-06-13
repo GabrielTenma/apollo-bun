@@ -29,7 +29,7 @@ export class FinancialAgentService {
 		const tradeIdeas = promptConfig.tradeIdeas || "1-5";
 		const language = promptConfig.language || "native english";
 
-		return `You are an elite financial analyst. You will be given three separate JSON data sources: FinancialJuice (US macro/live news) "${promptConfig.financialJuiceContent}", Yahoo Finance (equity news) "${promptConfig.yahooFinanceContent}", and CoinMarketCap (real-time crypto prices, 24h changes, volume, market cap) "${promptConfig.coinmarketCapContent}". 
+		return `You are an elite financial analyst. You will be given four separate JSON data sources: FinancialJuice (US macro/live news) "${promptConfig.financialJuiceContent}", Yahoo Finance (equity news) "${promptConfig.yahooFinanceContent}", CoinMarketCap (real-time crypto prices, 24h changes, volume, market cap) "${promptConfig.coinmarketCapContent}", and CNBC (markets news) "${promptConfig.cnbcContent}". 
 Synthesize the incoming data and output ONLY markdown. The entire response must be plain text under ${textLength} words.
 ## Overall Market Stance
 State the short-term directional bias for US equities (e.g., cautiously bearish/defensive, favoring specific sectors) and for crypto (e.g., neutral with a bullish BTC tilt, selective alt momentum). Attribute the stance to the single biggest macro or news driver from the provided data.
